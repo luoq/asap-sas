@@ -17,3 +17,4 @@ for( k in 1:numberOfEssaySet){
   system(paste("ln -sf ../Rprofile.common ",data.dir(k),".Rprofile",sep=""))
   with(Set[[k]],save(list=ls(),file=data.file(k)))
 }
+save(Set,file="train.features.RData")
