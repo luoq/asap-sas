@@ -1,3 +1,4 @@
+require(Metrics)
 run <- function(k){
   source(paste("model/",as.character(k),".R",sep=""))
   res <- lapply(1:numberOfEssaySet,function(k){
@@ -11,6 +12,9 @@ run <- function(k){
   models <- lapply(res,function(x) x$model)
   kappas <- sapply(res,function(x) x$kappa)
   colnames(kappas) <- as.character(1:numberOfEssaySet)
+  mean.kappas <- kappas["mean",]
+  mean.kappas <- c(k,mean.kappas,MeanQuadraticWeightedKappa(mean.kappas))
+  write.table(matrix(mean.kappas,nrow=1),file="kappa.csv",append=TRUE,sep=",",row.names=FALSE,col.names=FALSE)
   
   pred.public <-lapply(1:numberOfEssaySet,function(k){
     with(Set[[k]],{
