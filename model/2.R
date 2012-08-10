@@ -1,4 +1,4 @@
-## LM_step on simple features
+## randomForest on simple features
 require(Metrics)
 require(randomForest)
 source('general/util.R')
