@@ -158,3 +158,10 @@ ls.nofunction <- function() {
   mask <- sapply(names,function(name) is.function(get(name)))
   return(names[!mask])
 }
+nspace <- function(x){
+  start <- gregexpr(" ",x)[[1]]
+  if(length(start)==1 && start==-1)
+    return(0)
+  else
+    return(length(start))
+}

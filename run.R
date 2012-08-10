@@ -1,9 +1,22 @@
 require(Metrics)
 require(parallel)
+require(tm)
 set.seed(84565)
 run <- function(k){
   source(paste("model/",as.character(k),".R",sep=""))
+
   used_feature=used_feature[c("simple","dtm","corpus")]
+  if(used_feature["dtm"]){
+    for(i in 1:numberOfEssaySet){
+      nwords <- unname(sapply(Set[[k]]$terms,function(x) nspace(x)+1))
+      mask <- (nwords>=mingram) & (nwords<=maxgram)
+      Set[[i]]$terms <- Set[[i]]$terms[mask]
+      Set[[i]]$dtm <- Set[[i]]$dtm[,mask]
+      Set[[i]]$dtm.public <- Set[[i]]$dtm.public[,mask]
+    }
+    rm(i,nwords,mask)
+  }
+  
   res <- mclapply(1:numberOfEssaySet,function(k){
     with(Set[[k]], do.call(train.model,c(list(simple_feature,dtm,corpus)[used_feature],list(y))))
   })

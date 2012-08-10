@@ -1,10 +1,10 @@
-## glmnet on 1-3-gram
+## glmnet on 1-gram
 require(Metrics)
 require(glmnet)
 source('general/util.R')
 used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
 mingram <- 1
-maxgram <- 3
+maxgram <- 1
 apply.model <- function(model,dtm){
   X <- as.Matrix(dtm)
   pred <- predict(model$fit,X,s=model$s)

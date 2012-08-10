@@ -1,9 +1,9 @@
-## glmnet on 1-3-gram
+## glmnet on 3-gram
 require(Metrics)
 require(glmnet)
 source('general/util.R')
 used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
-mingram <- 1
+mingram <- 3
 maxgram <- 3
 apply.model <- function(model,dtm){
   X <- as.Matrix(dtm)
