@@ -1,13 +1,9 @@
 require(Metrics)
 run <- function(k){
   source(paste("model/",as.character(k),".R",sep=""))
+  used_feature=used_feature[c("simple","dtm","corpus")]
   res <- lapply(1:numberOfEssaySet,function(k){
-    with(Set[[k]],{
-      if(use_simple_feature)
-        train.model(corpus,simple_feature,y)
-      else
-        train.model(corpus,y)
-    })
+    with(Set[[k]], do.call(train.model,c(list(simple_feature,dtm,corpus)[used_feature],list(y))))
   })
   models <- lapply(res,function(x) x$model)
   kappas <- sapply(res,function(x) x$kappa)
@@ -18,11 +14,7 @@ run <- function(k){
   
   pred.public <-lapply(1:numberOfEssaySet,function(k){
     with(Set[[k]],{
-      pred <- 
-        if(use_simple_feature)
-          apply.model(models[[k]],corpus.public,simple_feature.public)
-        else
-          apply.model(modles[[k]],corpus.public)
+      pred <- do.call(apply.model,c(list(models[[k]]),list(simple_feature.public,dtm.public,corpus.public)[used_feature]))
       data.frame(id=id.public,essay_score=pred)
     })
   })

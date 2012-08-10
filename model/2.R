@@ -3,20 +3,21 @@ require(Metrics)
 require(randomForest)
 source('general/util.R')
 use_simple_feature=TRUE
+used_feature <- c(simple=TRUE,dtm=FALSE,corpus=FALSE)
 train.model.2 <- function(X,y){
   randomForest(X,as.factor(y))
 }
-apply.model <- function(model,corpus,sf){
+apply.model <- function(model,sf){
   factor2numeric(predict(model,sf))
 }
-train.model <- function(corpus,sf,y){
+train.model <- function(sf,y){
   K <- 5
-  n <- length(corpus)
+  n <- length(y)
   all.folds <- split(1:n,rep(1:K,length=n))
   kappa <- sapply(1:K,function(k){
     omit <- all.folds[[k]]
     model <- train.model.2(sf[-omit,,drop=FALSE],y[-omit])
-    pred <- apply.model(model,corpus[omit],sf[omit,,drop=FALSE])
+    pred <- apply.model(model,sf[omit,,drop=FALSE])
     ScoreQuadraticWeightedKappa(pred,y[omit],min(y),max(y))
   })
   kappa <- append(kappa,MeanQuadraticWeightedKappa(kappa))
