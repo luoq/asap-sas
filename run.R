@@ -1,5 +1,6 @@
 require(Metrics)
 require(parallel)
+set.seed(84565)
 run <- function(k){
   source(paste("model/",as.character(k),".R",sep=""))
   used_feature=used_feature[c("simple","dtm","corpus")]
