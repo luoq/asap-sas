@@ -44,7 +44,7 @@ extract.simpleFeatrure <- function(corpus){
   
   as.data.frame(result)
 }
-get_dtm <- function(corpus,dictionary=NULL){
+get_dtm <- function(corpus,ngram=3,dictionary=NULL){
   preprocess_corpus <- function(corpus){
     ## :punct: = [!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]
     ## these punctuation may be between two words
@@ -57,7 +57,7 @@ get_dtm <- function(corpus,dictionary=NULL){
   require(RWeka)
   corpus <- preprocess_corpus(corpus)
   default.ctrl <- list(
-                       tokenize=WordTokenizer,
+                       tokenize=function(x) NGramTokenizer(x,control=Weka_control(max=ngram)),
                        removePunctuation=TRUE,
                        removeNumbers=TRUE,
                        #stopwords=stopwords("en"),

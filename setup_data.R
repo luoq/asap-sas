@@ -12,6 +12,9 @@ for( k in 1:numberOfEssaySet){
   Set[[k]]$corpus.public <- Corpus(VectorSource(with(public_test_set,EssayText[EssaySet==k])))
   Set[[k]]$simple_feature.public <- extract.simpleFeatrure(Set[[k]]$corpus.public)
   Set[[k]]$id.public <- with(public_test_set,Id[EssaySet==k])
+  Set[[k]]$dtm <- get_dtm(Set[[k]]$corpus)
+  Set[[k]]$terms <- Set[[k]]$dtm$dimnames$Terms
+  Set[[k]]$dtm.public <- get_dtm(Set[[k]]$corpus.public,dictionary=Set[[k]]$terms)
 }
 # data.dir <- function(k)
 #   paste("exp/",as.character(k),"/",sep="")
