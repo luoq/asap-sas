@@ -1,4 +1,4 @@
-## LM_step on simple features
+comment="LM_step on simple features"
 require(Metrics)
 require(MASS)
 source('general/util.R')

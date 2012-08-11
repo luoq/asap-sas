@@ -15,6 +15,8 @@ for( k in 1:numberOfEssaySet){
   Set[[k]]$dtm <- get_dtm(Set[[k]]$corpus)
   Set[[k]]$terms <- Set[[k]]$dtm$dimnames$Terms
   Set[[k]]$dtm.public <- get_dtm(Set[[k]]$corpus.public,dictionary=Set[[k]]$terms)
+  Set[[k]]$dtm <- as.Matrix(Set[[k]]$dtm)
+  Set[[k]]$dtm.public <- as.Matrix(Set[[k]]$dtm.public)
 }
 # data.dir <- function(k)
 #   paste("exp/",as.character(k),"/",sep="")

@@ -5,12 +5,12 @@ source('general/util.R')
 used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
 mingram <- 3
 maxgram <- 3
-apply.model <- function(model,dtm){
+apply.model <- function(model,X){
   X <- as.Matrix(dtm)
   pred <- predict(model$fit,X,s=model$s)
   as.vector(round.range(pred,model$yrange[1],model$yrange[2]))
 }
-train.model <- function(dtm,y){
+train.model <- function(X,y){
   X <- as.Matrix(dtm)
   yrange <- range(y)
   K <- 5

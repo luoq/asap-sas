@@ -1,4 +1,4 @@
-## randomForest on simple features
+comment="randomForest on simple features"
 require(Metrics)
 require(randomForest)
 source('general/util.R')
