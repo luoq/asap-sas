@@ -3,8 +3,7 @@ require(Metrics)
 require(glmnet)
 source('general/util.R')
 used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
-mingram <- 3
-maxgram <- 3
+dtm_features_ctrl <- list(mingram=1,maxgram=3,local_weight="tf",term_weight=NULL)
 apply.model <- function(model,X){
   X <- as.Matrix(dtm)
   pred <- predict(model$fit,X,s=model$s)

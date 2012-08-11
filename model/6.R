@@ -3,8 +3,7 @@ require(Metrics)
 require(glmnet)
 source('general/util.R')
 used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
-mingram <- 2
-maxgram <- 3
+dtm_features_ctrl <- list(mingram=1,maxgram=3,local_weight="tf",term_weight=NULL)
 apply.model <- function(model,X){
   pred <- predict(model$fit,X,s=model$s)
   as.vector(round.range(pred,model$yrange[1],model$yrange[2]))

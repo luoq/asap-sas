@@ -1,6 +1,7 @@
 require(Metrics)
 require(parallel)
 require(tm)
+source("general/feature.R")
 run <- function(k){
   source(paste("model/",as.character(k),".R",sep=""))
 
@@ -8,10 +9,12 @@ run <- function(k){
   if(used_feature["dtm"]){
     for(i in 1:numberOfEssaySet){
       nwords <- unname(sapply(Set[[i]]$terms,function(x) nspace(x)+1))
-      mask <- (nwords>=mingram) & (nwords<=maxgram)
+      mask <- (nwords>=dtm_features_ctrl$mingram) & (nwords<=dtm_features_ctrl$maxgram)
       Set[[i]]$terms <- Set[[i]]$terms[mask]
       Set[[i]]$dtm <- Set[[i]]$dtm[,mask]
       Set[[i]]$dtm.public <- Set[[i]]$dtm.public[,mask]
+      Set[[i]]$dtm <- apply_weight(Set[[i]]$dtm,dtm_features_ctrl$local_weight,dtm_features_ctrl$term_weight)
+      Set[[i]]$dtm.public <- apply_weight(Set[[i]]$dtm.public,dtm_features_ctrl$local_weight,dtm_features_ctrl$term_weight)
     }
     rm(i,nwords,mask)
   }
