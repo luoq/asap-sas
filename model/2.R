@@ -2,7 +2,6 @@ comment="randomForest on simple features"
 require(Metrics)
 require(randomForest)
 source('general/util.R')
-use_simple_feature=TRUE
 used_feature <- c(simple=TRUE,dtm=FALSE,corpus=FALSE)
 train.model.2 <- function(X,y){
   randomForest(X,as.factor(y))
