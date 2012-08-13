@@ -103,6 +103,24 @@ square.split <- function(n,k){
   }
   x
 }
+weight.split <- function(w,n){
+  delta <- sum(w)/n
+  S <- vector(mode="numeric",length=n)
+  i <- 1
+  s <- 0
+  a <- delta
+  j <- 1
+  while(i<=length(w)){
+    s <- s+w[i]
+    if(s>=a){
+      S[j] <- i
+      a <- a+delta
+      j <- j+1
+    }
+    i <- i+1
+  }
+  return(S)
+}
 entropy <- function(P){
   sum(sapply(P,function(x) -x*log(x)))
 }
