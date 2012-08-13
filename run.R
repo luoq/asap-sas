@@ -16,7 +16,7 @@ run <- function(k){
       Set[[i]]$dtm <- apply_weight(Set[[i]]$dtm,dtm_features_ctrl$local_weight,dtm_features_ctrl$term_weight)
       Set[[i]]$dtm.public <- apply_weight(Set[[i]]$dtm.public,dtm_features_ctrl$local_weight,dtm_features_ctrl$term_weight)
     }
-    rm(i,nwords,mask)
+    rm(i,mask)
   }
   
   res <- mclapply(1:numberOfEssaySet,function(k){

@@ -3,7 +3,8 @@ require(Metrics)
 source('general/util.R')
 used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
 dtm_features_ctrl <- list(mingram=1,maxgram=3,local_weight="bintf",term_weight=NULL)
-train.NB.Bernoulli <- function(X,y,laplace=0.1){
+LAPLACE <- 0.1
+train.NB.Bernoulli <- function(X,y,laplace=LAPLACE){
   y <- as.factor(y)
   if(is.vector(X))
     X <- matrix(X,ncol=1)
