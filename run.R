@@ -1,5 +1,6 @@
 require(Metrics)
 require(parallel)
+require(Matrix)
 require(tm)
 source("general/feature.R")
 run <- function(k){
