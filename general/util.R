@@ -1,3 +1,5 @@
+wordNumber <- function(txt)
+  sapply(gregexpr("\\w+",txt), length)
 round.range <- function(x,min,max) {
   x<-round(x)
   x[x>max] <- max

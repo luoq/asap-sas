@@ -9,8 +9,7 @@ run <- function(k){
   used_feature=used_feature[c("simple","dtm","corpus")]
   if(used_feature["dtm"]){
     for(i in 1:numberOfEssaySet){
-      nwords <- unname(sapply(Set[[i]]$terms,function(x) nspace(x)+1))
-      mask <- (nwords>=dtm_features_ctrl$mingram) & (nwords<=dtm_features_ctrl$maxgram)
+      mask <- (Set[[i]]$ngram>=dtm_features_ctrl$mingram) & (Set[[i]]$ngram<=dtm_features_ctrl$maxgram)
       Set[[i]]$terms <- Set[[i]]$terms[mask]
       Set[[i]]$dtm <- Set[[i]]$dtm[,mask]
       Set[[i]]$dtm.public <- Set[[i]]$dtm.public[,mask]

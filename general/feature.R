@@ -1,6 +1,4 @@
 require(tm)
-wordNumber <- function(txt)
-  sapply(gregexpr("\\W+",txt), length) + 1
 characterNumber <- function(txt)
   nchar(gsub("\\W+","",txt))
 misspelledNumber <- function(txt){
@@ -21,8 +19,8 @@ sentenceNumber <- function(txt){
 }
 extract.simpleFeatrure <- function(corpus){
   preprocess_corpus <- function(corpus){
-    corpus <- tm_map(corpus,function(txt) gsub("[!(),\\./:;?]"," ",txt))
-    corpus <- tm_map(corpus,removePunctuation)
+    corpus <- tm_map(corpus,function(x) gsub("[[:punct:]]+", " ", x))
+    corpus
   }
   result <- NULL
   result$Nword <- wordNumber(corpus)
@@ -46,28 +44,24 @@ extract.simpleFeatrure <- function(corpus){
 }
 get_dtm <- function(corpus,ngram=3,dictionary=NULL){
   preprocess_corpus <- function(corpus){
-    ## :punct: = [!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]
-    ## these punctuation may be between two words
-    ## corpus <- tm_map(corpus,function(txt) gsub("[!(),\\./:;?]"," ",txt))
-    ## NOTE:termFreq tokenize before removePunctuation.
-    ## corpus <- tm_map(corpus,removePunctuation)
-    ## corpus <- tm_map(corpus,removeNumbers)
+    corpus <- tm_map(corpus,function(x) gsub("[[:punct:]]+", " ", x))
+    corpus <- tm_map(corpus,stemDocument)
     corpus
   }
   require(RWeka)
   corpus <- preprocess_corpus(corpus)
   default.ctrl <- list(
                        tokenize=function(x) NGramTokenizer(x,control=Weka_control(max=ngram)),
-                       removePunctuation=TRUE,
-                       removeNumbers=TRUE,
+                       removePunctuation=FALSE,
+                       removeNumbers=FALSE,
                        #stopwords=stopwords("en"),
-                       stemming=TRUE
+                       stemming=FALSE
                        )
   if(is.null(dictionary))
     ctrl <- c(default.ctrl,list(bounds=list(global=c(4,Inf))))# about half the terms only belong to one document
   else
     ctrl <- c(default.ctrl,list(dictionary=dictionary))
-  dtm <- DocumentTermMatrix(corpus,control=ctrl)
+  DocumentTermMatrix(corpus,control=ctrl)
 }
 idf <- function(M){
   n <- nrow(M)
