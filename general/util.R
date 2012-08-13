@@ -124,8 +124,7 @@ weight.split <- function(w,n){
 entropy <- function(P){
   sum(sapply(P,function(x) -x*log(x)))
 }
-joint.entropy <- function(C,x){
-  laplace <- 1e-4
+joint.entropy <- function(C,x,laplace=1e-4){
   C <- factor(C)#ensure C[x==i] has same levels as C
   x <- factor(x)
   P <- prop.table(table(x))
@@ -154,8 +153,7 @@ informationGain2 <- function(y,X,laplace=1e-4){#X is binary
   })
   H0-H1
 }
-informationGainMultinomial <- function(y,X){
-  laplace <- 1e-4
+informationGainMultinomial <- function(y,X,laplace=1e-4){
   y <- as.factor(y)
   A <- t(sapply(levels(y),function(i) y==i)) * 1
   freq <- A %*% X

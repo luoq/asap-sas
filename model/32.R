@@ -1,9 +1,9 @@
-comment="NB.Multinomial on 1-3-gram,feature selection by information gain,different search step"
+comment="NB.Multinomial on 1-3-gram,feature selection by information gain"
 require(Metrics)
 source('general/util.R')
 used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
 dtm_features_ctrl <- list(mingram=1,maxgram=3,local_weight="tf",term_weight=NULL)
-train.NB.Multinomial <- function(X,y,laplace=0.1){
+train.NB.Multinomial <- function(X,y,laplace=1e-4){
   y <- as.factor(y)
   if(is.vector(X))
     X <- matrix(X,ncol=1)
@@ -20,7 +20,7 @@ predict.NB.Multinomial <- function(model,X){
   L <- L+outer(rep(1,nrow(X)),model$logprior)
   model$levels[apply(L,1,which.max)]
 }
-train.and.predict <- function(X,y,X2,ord,ks,laplace=0.1){
+train.and.predict <- function(X,y,X2,ord,ks,laplace=1e-4){
   y <- as.factor(y)
   levels=as.numeric(levels(y))
   if(is.vector(X))
@@ -45,9 +45,9 @@ train.and.predict <- function(X,y,X2,ord,ks,laplace=0.1){
   })
 }
 train.model <- function(X,y){
-  w <- informationGainMultinomial(y,X)
+  w <- informationGainMultinomial(y,X,laplace=1e-4)
   ord <- order(w,decreasing=TRUE)
-  ks <- weight.split(sort(w,decreasing=TRUE),100)
+  ks <- square.split(length(w),30)
   
   K <- 5
   n <- length(y)

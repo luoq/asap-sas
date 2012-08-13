@@ -1,9 +1,10 @@
-comment="NB.Multinomial on 1-gram"
+comment="NB.Multinomial on 1-gram,laplace=1"
 require(Metrics)
 source('general/util.R')
 used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
 dtm_features_ctrl <- list(mingram=1,maxgram=1,local_weight="tf",term_weight=NULL)
-train.NB.Multinomial <- function(X,y,laplace=0.1){
+LAPLACE <- 1
+train.NB.Multinomial <- function(X,y,laplace=LAPLACE){
   y <- as.factor(y)
   if(is.vector(X))
     X <- matrix(X,ncol=1)
