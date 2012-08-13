@@ -141,7 +141,6 @@ informationGain <- function(C,X){
   H
 }
 informationGain2 <- function(y,X,laplace=1e-4){#X is binary
-  X <- X!=0
   N <- length(y)
   y <- as.factor(y)
   ny <- table(y)
