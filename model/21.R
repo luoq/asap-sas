@@ -1,6 +1,5 @@
 comment="NB.Bernoulli on 1-3-gram"
 require(Metrics)
-require(glmnet)
 source('general/util.R')
 used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
 dtm_features_ctrl <- list(mingram=1,maxgram=3,local_weight="bintf",term_weight=NULL)
