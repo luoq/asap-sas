@@ -48,7 +48,8 @@ train.and.predict <- function(X,y,X2,ord,ks,laplace=LAPLACE){
 train.model <- function(X,y){
   w <- informationGainMultinomial(y,X,laplace=LAPLACE)
   ord <- order(w,decreasing=TRUE)
-  ks <- square.split(length(w),30)
+  # ks <- square.split(length(w),30)
+  ks <- weight.split(sort(w,decreasing=TRUE),100)
   
   K <- 5
   n <- length(y)
