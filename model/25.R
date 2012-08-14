@@ -56,8 +56,6 @@ train.model <- function(X,y){
   all.folds <- split(1:n,rep(1:K,length=n))
   kappa <- sapply(1:K,function(k){
     omit <- all.folds[[k]]
-    nb <- train.NB.Multinomial(X[-omit,,drop=FALSE],y[-omit])
-    pred <- predict.NB.Multinomial(nb,X[omit,,drop=FALSE])
     pred <- train.and.predict(X[-omit,,drop=FALSE],y[-omit],X[omit,,drop=FALSE],ord,ks)
     kappa <- apply(pred,2,function(pred)
                    ScoreQuadraticWeightedKappa(pred,y[omit]))

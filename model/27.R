@@ -1,8 +1,8 @@
-comment="NB.Multinomial on 1-3-gram,IG on Bernoulli,laplace=1e-3"
+comment="NB.Multinomial on 1-5-gram,IG,laplace=1e-3"
 require(Metrics)
 source('general/util.R')
 used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
-dtm_features_ctrl <- list(mingram=1,maxgram=3,local_weight="tf",term_weight=NULL)
+dtm_features_ctrl <- list(mingram=1,maxgram=5,local_weight="tf",term_weight=NULL)
 LAPLACE <- 1e-3
 train.NB.Multinomial <- function(X,y,laplace=LAPLACE){
   y <- as.factor(y)
@@ -46,9 +46,10 @@ train.and.predict <- function(X,y,X2,ord,ks,laplace=LAPLACE){
   })
 }
 train.model <- function(X,y){
-  w <- informationGain2(y,X!=0,laplace=LAPLACE)
+  w <- informationGainMultinomial(y,X,laplace=LAPLACE)
   ord <- order(w,decreasing=TRUE)
-  ks <- square.split(length(w),30)
+  # ks <- square.split(length(w),30)
+  ks <- weight.split(sort(w,decreasing=TRUE),100)
   
   K <- 5
   n <- length(y)
