@@ -163,7 +163,7 @@ informationGainMultinomial <- function(y,X,laplace=1e-4){
   ny <- rowSums(freq)
   N <- sum(ny)
 
-  H0 <- entropy(prop.table(ny))
+  H0 <- entropy(add.laplace(ny,2*laplace))#ensure H0>=H1
   H1 <- apply(freq,2,function(x){
     sum(x)/N*entropy(add.laplace(x,laplace))+
       (1-sum(x)/N)*entropy(add.laplace(ny-x,laplace))
