@@ -145,7 +145,7 @@ informationGain2 <- function(y,X,laplace=1e-4){#X is binary
   N <- length(y)
   y <- as.factor(y)
   ny <- table(y)
-  H0 <- entropy(prop.table(ny))
+  H0 <- entropy(add.laplace(ny,2*laplace))#ensure H0-H1>=0
   A <- t(sapply(levels(y),function(i) y==i)) * 1
   freq <- A %*% X
   freq <- as.matrix(freq)
