@@ -67,7 +67,9 @@ idf <- function(M){
   n <- nrow(M)
   idf <- log2(n)-log2(colSums(M>0))+1
 }
-apply_weight <- function(M,local_weight="tf",term_weight=idf){
+apply_weight <- function(M,local_weight="tf",term_weight=idf,normalize=FALSE){
+  if(normalize)
+    M <- Diagonal(x=1/(rowSums(M))) %*% M
   ## compute weights first then apply local transfrom then term transform
   if(is.numeric(term_weight))
     weights <- term_weight

@@ -8,15 +8,17 @@ run <- function(k){
 
   used_feature=used_feature[c("simple","dtm","corpus")]
   if(used_feature["dtm"]){
+    ctrl <- dtm_features_ctrl
     for(i in 1:numberOfEssaySet){
-      mask <- (Set[[i]]$ngram>=dtm_features_ctrl$mingram) & (Set[[i]]$ngram<=dtm_features_ctrl$maxgram)
+      mask <- (Set[[i]]$ngram>=ctrl$mingram) & (Set[[i]]$ngram<=ctrl$maxgram)
       Set[[i]]$terms <- Set[[i]]$terms[mask]
       Set[[i]]$dtm <- Set[[i]]$dtm[,mask]
       Set[[i]]$dtm.public <- Set[[i]]$dtm.public[,mask]
-      Set[[i]]$dtm <- apply_weight(Set[[i]]$dtm,dtm_features_ctrl$local_weight,dtm_features_ctrl$term_weight)
-      Set[[i]]$dtm.public <- apply_weight(Set[[i]]$dtm.public,dtm_features_ctrl$local_weight,dtm_features_ctrl$term_weight)
+      normalize <- "normalize" %in% names(ctrl) && ctrl$normalize
+      Set[[i]]$dtm <- apply_weight(Set[[i]]$dtm,ctrl$local_weight,ctrl$term_weight,normalize)
+      Set[[i]]$dtm.public <- apply_weight(Set[[i]]$dtm.public,ctrl$local_weight,ctrl$term_weight,normalize)
     }
-    rm(i,mask)
+    rm(i,mask,ctrl)
   }
   
   res <- mclapply(1:numberOfEssaySet,function(k){
