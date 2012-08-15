@@ -6,9 +6,9 @@ used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
 dtm_features_ctrl <- list(mingram=1,maxgram=3,local_weight="bintf",term_weight=idf)
 apply.model <- function(model,X){
   pred <- predict(model$fit,X,s=model$s)
-  pred <- apply.parallel.NB(model$nb,pred)
+  pred <- apply.multi.NB.normal(model$nb,pred)
 }
-train.parallel.NB <- function(X,y,ZERO=1e-10){
+train.multi.NB.normal <- function(X,y,ZERO=1e-10){
   y <- as.factor(y)
   if(is.vector(X))
     X <- matrix(X,ncol=1)
@@ -23,7 +23,7 @@ train.parallel.NB <- function(X,y,ZERO=1e-10){
   vars[vars==0] <- ZERO
   return(list(levels=as.numeric(levels(y)),logprior=log(prop.table(ns)),means=means,vars=vars))
 }
-apply.parallel.NB <- function(model,X){
+apply.multi.NB.normal <- function(model,X){
   if(is.vector(X))
     X <- matrix(X,ncol=1)
   with(model,{
@@ -44,9 +44,9 @@ train.model <- function(X,y){
   kappa <- sapply(1:K,function(k){
     omit <- all.folds[[k]]
     fit <- glmnet(X[-omit,,drop=FALSE],y[-omit],alpha=0.8,family="gaussian")
-    nb <- train.parallel.NB(predict(fit,X[-omit,,drop=FALSE],s=index),y[-omit])
+    nb <- train.multi.NB.normal(predict(fit,X[-omit,,drop=FALSE],s=index),y[-omit])
     pred <- predict(fit,X[omit,,drop=FALSE],s=index)
-    pred <- apply.parallel.NB(nb,pred)
+    pred <- apply.multi.NB.normal(nb,pred)
     kappa <- apply(pred,2,function(pred)
                    ScoreQuadraticWeightedKappa(pred,y[omit]))
   })
@@ -57,7 +57,7 @@ train.model <- function(X,y){
   names(kappa) <- c(sapply(as.character(1:K),function(x) paste("fold",x,sep="")),"mean")
   
   fit <- glmnet(X,y,alpha=0.8,family="gaussian")
-  nb <- train.parallel.NB(predict(fit,X,s=s),y)
+  nb <- train.multi.NB.normal(predict(fit,X,s=s),y)
   model <- list(fit=fit,s=s,nb=nb)
   return(list(model=model,kappa=kappa))
 }

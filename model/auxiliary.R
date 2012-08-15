@@ -18,7 +18,7 @@ estimate.conditional.normal.dist <- function(X,y,ZERO=1e-10,logprior=FALSE){
   else
     return(list(levels=as.numeric(levels(y)),means=means,vars=vars,logsds=lodsds))
 }
-train.parallel.NB <- function(X,y,ZERO=1e-12)
+train.multi.NB.normal <- function(X,y,ZERO=1e-12)
   estimate.conditional.normal.dist(X,y,ZERO=ZERO,logprior=TRUE)
 calc.conditional.normal.dist <- function(model,X,offset=NULL){
   if(is.vector(X))
@@ -34,7 +34,7 @@ calc.conditional.normal.dist <- function(model,X,offset=NULL){
     L <- aperm(outer(offset,rep(1,ncol(X))),c(1,3,2))+L
   L
 }
-apply.parallel.NB <- function(model,X){
+apply.multi.NB.normal <- function(model,X){
   L <- calc.conditional.normal.dist(model,X,offset=outer(rep(1,nrow(X)),model$logprior))
   pred <- apply(L,c(1,2),which.max)
   matrix(model$levels[pred],nrow=nrow(pred))

@@ -7,7 +7,7 @@ used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
 dtm_features_ctrl <- list(mingram=1,maxgram=3,local_weight="bintf",term_weight=NULL)
 apply.model <- function(model,X){
   pred <- predict(model$fit,X,s=model$s)
-  pred <- apply.parallel.NB(model$nb,pred)
+  pred <- apply.multi.NB.normal(model$nb,pred)
 }
 train.model <- function(X,y){
   yrange <- range(y)
@@ -20,9 +20,9 @@ train.model <- function(X,y){
   kappa <- sapply(1:K,function(k){
     omit <- all.folds[[k]]
     fit <- glmnet(X[-omit,,drop=FALSE],y[-omit],lambda=lambda,alpha=0.8,family="gaussian")
-    nb <- train.parallel.NB(predict(fit,X[-omit,,drop=FALSE]),y[-omit])
+    nb <- train.multi.NB.normal(predict(fit,X[-omit,,drop=FALSE]),y[-omit])
     pred <- predict(fit,X[omit,,drop=FALSE])
-    pred <- apply.parallel.NB(nb,pred)
+    pred <- apply.multi.NB.normal(nb,pred)
     kappa <- apply(pred,2,function(pred)
                    ScoreQuadraticWeightedKappa(pred,y[omit]))
   })
@@ -32,7 +32,7 @@ train.model <- function(X,y){
   kappa <- c(kappa[i,],mean.kappa[i])
   names(kappa) <- c(sapply(as.character(1:K),function(x) paste("fold",x,sep="")),"mean")
   
-  nb <- train.parallel.NB(predict(fit,X,s=s),y)
+  nb <- train.multi.NB.normal(predict(fit,X,s=s),y)
   model <- list(fit=fit,s=s,nb=nb)
   return(list(model=model,kappa=kappa))
 }
