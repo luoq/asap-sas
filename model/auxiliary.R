@@ -26,8 +26,8 @@ calc.conditional.normal.dist <- function(model,X,offset=NULL){
   L <- with(model,{
     n <- nrow(X)
     logP <- sapply(1:length(levels),function(i){
-      (X-outer(rep(1,n),means[i,]))^2/outer(rep(1,n),vars[i,])/2
-      # (X-outer(rep(1,n),means[i,]))^2/outer(rep(1,n),vars[i,])/2-outer(rep(1,n),logsds[i,])
+      -(X-outer(rep(1,n),means[i,]))^2/outer(rep(1,n),vars[i,])/2
+      # -(X-outer(rep(1,n),means[i,]))^2/outer(rep(1,n),vars[i,])/2-outer(rep(1,n),logsds[i,])
     },simplify="array")
   })
   if(!is.null(offset))
