@@ -42,23 +42,24 @@ train.model <- function(sf,dtm,y){
   K <- 5
   n <- length(y)
   all.folds <- split(1:n,rep(1:K,length=n))
-  index <- seq(0,1,length=100)
+
+  fit <- glmnet(X,y,alpha=0.8,nlambda=100,family="gaussian")
+  lambda <- fit$lambda
   kappa <- sapply(1:K,function(k){
     omit <- all.folds[[k]]
-    fit <- glmnet(X[-omit,,drop=FALSE],y[-omit],alpha=0.8,family="gaussian")
-    nb <- train.parallel.NB(predict(fit,X[-omit,,drop=FALSE],s=index),y[-omit])
-    pred <- predict(fit,X[omit,,drop=FALSE],s=index)
+    fit <- glmnet(X[-omit,,drop=FALSE],y[-omit],lambda=lambda,alpha=0.8,family="gaussian")
+    nb <- train.parallel.NB(predict(fit,X[-omit,,drop=FALSE]),y[-omit])
+    pred <- predict(fit,X[omit,,drop=FALSE])
     pred <- apply.parallel.NB(nb,pred)
     kappa <- apply(pred,2,function(pred)
                    ScoreQuadraticWeightedKappa(pred,y[omit]))
   })
   mean.kappa <- apply(kappa,1,MeanQuadraticWeightedKappa)
   i <- which.max(mean.kappa)
-  s <- index[i]
+  s <- lambda[i]
   kappa <- c(kappa[i,],mean.kappa[i])
   names(kappa) <- c(sapply(as.character(1:K),function(x) paste("fold",x,sep="")),"mean")
   
-  fit <- glmnet(X,y,alpha=0.8,family="gaussian")
   nb <- train.parallel.NB(predict(fit,X,s=s),y)
   model <- list(fit=fit,s=s,nb=nb)
   return(list(model=model,kappa=kappa))
