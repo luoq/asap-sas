@@ -11,12 +11,10 @@ estimate.conditional.normal.dist <- function(X,y,ZERO=1e-10,logprior=FALSE){
   means <- as.matrix(means)
   vars <- as.matrix(vars)
   vars[vars<ZERO] <- ZERO
-  sds <- sqrt(vars)
-  logsds <- log(sds)
   if(logprior)
-    return(list(levels=as.numeric(levels(y)),logprior=log(prop.table(ns)),means=means,vars=vars,sds=sds,logsds=logsds))
+    return(list(levels=as.numeric(levels(y)),logprior=log(prop.table(ns)),means=means,vars=vars))
   else
-    return(list(levels=as.numeric(levels(y)),means=means,vars=vars,logsds=lodsds))
+    return(list(levels=as.numeric(levels(y)),means=means,vars=vars))
 }
 train.multi.NB.normal <- function(X,y,ZERO=1e-12)
   estimate.conditional.normal.dist(X,y,ZERO=ZERO,logprior=TRUE)
@@ -38,4 +36,11 @@ apply.multi.NB.normal <- function(model,X){
   L <- calc.conditional.normal.dist(model,X,offset=outer(rep(1,nrow(X)),model$logprior))
   pred <- apply(L,c(1,2),which.max)
   matrix(model$levels[pred],nrow=nrow(pred))
+}
+apply.NB.normal <- function(model,X){
+  L <- calc.conditional.normal.dist(model,X)
+  L <- apply(L,c(1,3),sum)
+  L <- L+outer(rep(1,nrow(X)),model$logprior)
+  pred <- apply(L,1,which.max)
+  model$levels[pred]
 }
