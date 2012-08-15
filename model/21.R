@@ -13,11 +13,11 @@ train.NB.Bernoulli <- function(X,y,laplace=LAPLACE){
   logprior <- log(prop.table(ns))
   S <- MASK %*% X
   ps <- as.matrix(Diagonal(x=1/(ns+2*laplace)) %*% (S+laplace))
-  return(list(levels=as.numeric(levels(y)),logprior=logprior,ps=ps))
+  Q <- t(log(ps)-log(1-ps))
+  return(list(levels=as.numeric(levels(y)),logprior=logprior,Q=Q))
 }
 predict.NB.Bernoulli <- function(model,X){
-  Q <- log(model$ps)-log(1-model$ps)
-  L <- X %*% t(Q)
+  L <- X %*% model$Q
   L <- L+outer(rep(1,nrow(X)),model$logprior)
   model$levels[apply(L,1,which.max)]
 }
