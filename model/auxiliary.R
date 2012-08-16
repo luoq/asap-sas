@@ -32,15 +32,19 @@ calc.conditional.normal.dist <- function(model,X,offset=NULL){
     L <- aperm(outer(offset,rep(1,ncol(X))),c(1,3,2))+L
   L
 }
-apply.multi.NB.normal <- function(model,X){
-  L <- calc.conditional.normal.dist(model,X,offset=outer(rep(1,nrow(X)),model$logprior))
+apply.multi.NB.normal <- function(model,X,add.prior=TRUE){
+  if(add.prior)
+    L <- calc.conditional.normal.dist(model,X,offset=outer(rep(1,nrow(X)),model$logprior))
+  else
+    L <- calc.conditional.normal.dist(model,X)
   pred <- apply(L,c(1,2),which.max)
   matrix(model$levels[pred],nrow=nrow(pred))
 }
-apply.NB.normal <- function(model,X){
+apply.NB.normal <- function(model,X,add.prior=TRUE){
   L <- calc.conditional.normal.dist(model,X)
   L <- apply(L,c(1,3),sum)
-  L <- L+outer(rep(1,nrow(X)),model$logprior)
+  if(add.prior)
+    L <- L+outer(rep(1,nrow(X)),model$logprior)
   pred <- apply(L,1,which.max)
   model$levels[pred]
 }
