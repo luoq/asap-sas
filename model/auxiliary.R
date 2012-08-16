@@ -101,3 +101,12 @@ apply.NB.KDE <- function(model,X,add.prior=TRUE){
   pred <- apply(L,1,which.max)
   model$levels[pred]
 }
+proportional.assignment <- function(x,proportion,levels){
+  n <- length(x)
+  ord <- order(x)
+  p <- cumsum(floor(proportion*n))
+  p <- c(0,p)
+  for(i in 1:length(levels))
+    x[ord[seq(p[i]+1,p[i+1])]] <- levels[i]
+  return(x)
+}
