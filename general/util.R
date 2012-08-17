@@ -82,7 +82,7 @@ first.true.index <- function(M)
   apply(M,1,function(x){
     n <- length(x)
     for(i in 1:n)
-      if(x[i]>0.5)
+      if(x[i])
         return(i)
     return(n+1)
   })
