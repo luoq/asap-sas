@@ -2,6 +2,7 @@ require(Metrics)
 require(parallel)
 require(Matrix)
 require(tm)
+return_each_fold_kappa <- TRUE
 source("general/feature.R")
 run <- function(k){
   source(paste("model/",as.character(k),".R",sep=""))
@@ -27,8 +28,14 @@ run <- function(k){
   })
   models <- lapply(res,function(x) x$model)
   kappas <- sapply(res,function(x) x$kappa)
-  colnames(kappas) <- as.character(1:numberOfEssaySet)
-  mean.kappas <- kappas["mean",]
+  if(return_each_fold_kappa){
+    colnames(kappas) <- as.character(1:numberOfEssaySet)
+    mean.kappas <- kappas["mean",]
+  }
+  else{
+    names(kappas) <- as.character(1:numberOfEssaySet)
+    mean.kappas <- kappas
+  }
   mean.kappas <- c(mean.kappas,MeanQuadraticWeightedKappa(mean.kappas))
   info <- data.frame(id=k,comment=comment)
   info <- cbind(info,matrix(mean.kappas,nrow=1))
