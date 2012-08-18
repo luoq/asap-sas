@@ -32,6 +32,8 @@ calc.conditional.normal.dist <- function(model,X,offset=NULL){
   L
 }
 apply.multi.NB.normal <- function(model,X,add.prior=TRUE){
+  if(is.vector(X))
+    X <- matrix(X,ncol=1)
   if(add.prior)
     L <- calc.conditional.normal.dist(model,X,offset=outer(rep(1,nrow(X)),model$logprior))
   else
@@ -40,6 +42,8 @@ apply.multi.NB.normal <- function(model,X,add.prior=TRUE){
   matrix(model$levels[pred],nrow=nrow(pred))
 }
 apply.NB.normal <- function(model,X,add.prior=TRUE){
+  if(is.vector(X))
+    X <- matrix(X,ncol=1)
   L <- calc.conditional.normal.dist(model,X)
   L <- apply(L,c(1,3),sum)
   if(add.prior)
