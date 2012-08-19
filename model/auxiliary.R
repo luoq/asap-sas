@@ -39,7 +39,10 @@ apply.multi.NB.normal <- function(model,X,add.prior=TRUE){
   else
     L <- calc.conditional.normal.dist(model,X)
   pred <- apply(L,c(1,2),which.max)
-  matrix(model$levels[pred],nrow=nrow(pred))
+  if(ncol(pred)==1)
+    model$levels[pred]
+  else
+    matrix(model$levels[pred],nrow=nrow(pred))
 }
 apply.NB.normal <- function(model,X,add.prior=TRUE){
   if(is.vector(X))
@@ -95,7 +98,10 @@ apply.multi.NB.KDE <- function(model,X,add.prior=TRUE){
   else
     L <- calc.conditional.KDE(model,X)
   pred <- apply(L,c(1,2),which.max)
-  matrix(model$levels[pred],nrow=nrow(pred))
+  if(ncol(pred)==1)
+    model$levels[pred]
+  else
+    matrix(model$levels[pred],nrow=nrow(pred))
 }
 apply.NB.KDE <- function(model,X,add.prior=TRUE){
   L <- calc.conditional.KDE(model,X)
