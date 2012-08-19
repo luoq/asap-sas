@@ -46,9 +46,9 @@ train.and.predict <- function(X,y,X2,ord,ks,laplace=LAPLACE){
   })
 }
 train.model <- function(X,y){
-  K <- 5
+  K <- 10
   n <- length(y)
-  all.folds <- split(1:n,rep(1:K,length=n))
+  all.folds <- cv.kfold.random(n,K)
   kappa <- sapply(1:K,function(k){
     omit <- all.folds[[k]]
     w <- informationGainMultinomial(y[-omit],X[-omit,,drop=FALSE],laplace=LAPLACE)
