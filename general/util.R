@@ -89,10 +89,13 @@ first.true.index <- function(M)
 add.laplace <- function(x,laplace,n=length(x)){
   (x+laplace)/(sum(x)+n*laplace)
 }
-kfold <- function(n,k){
+cv.kfold.random <- function(n,k){
   ord <- order(runif(n))
-  split(ord,rep(1:k,length=n))
+  res <- split(ord,rep(1:k,length=n))
+  lapply(res,sort)
 }
+cv.kfold.sequential <- function(n,k)
+  split(1:n,rep(1:k,length=n))
 square.split <- function(n,k){
   a <- (1:k)^2
   a <- a/a[length(a)]
