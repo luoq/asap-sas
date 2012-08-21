@@ -185,3 +185,5 @@ nspace <- function(x){
   else
     return(length(start))
 }
+precision <- function(x,y)
+  sum(x==y)/length(x)

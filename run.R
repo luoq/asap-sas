@@ -21,13 +21,16 @@ run <- function(k){
     }
     rm(i,mask,ctrl)
   }
-  
+
   res <- mclapply(1:numberOfEssaySet,function(k){
     set.seed(84565+k^5)
     with(Set[[k]], do.call(train.model,c(list(simple_feature,dtm,corpus)[used_feature],list(y))))
   })
   models <- lapply(res,function(x) x$model)
   kappas <- sapply(res,function(x) x$kappa)
+  have_prec <- "prec" %in% names(res[[1]])
+  if(have_prec)
+    precs <- sapply(res,function(x) x$prec)
   if(return_each_fold_kappa){
     colnames(kappas) <- as.character(1:numberOfEssaySet)
     mean.kappas <- kappas["mean",]
@@ -40,7 +43,12 @@ run <- function(k){
   info <- data.frame(id=k,comment=comment)
   info <- cbind(info,matrix(mean.kappas,nrow=1))
   write.table(info ,file="kappa.csv",append=TRUE,sep=",",row.names=FALSE,col.names=FALSE)
-  
+  if(have_prec){
+    msg <- do.call(paste,c(as.list(as.character(precs['mean',])),sep=","))
+    msg <- paste(",precision,",msg,sep="")
+    write(msg,file="kappa.csv",append=TRUE)
+  }
+
   pred.public <- mclapply(1:numberOfEssaySet,function(k){
     with(Set[[k]],{
       pred <- do.call(apply.model,c(list(models[[k]]),list(simple_feature.public,dtm.public,corpus.public)[used_feature]))
@@ -53,6 +61,10 @@ run <- function(k){
             ,file=paste("model/","public",as.character(k),".csv",sep="")
             ,quote=FALSE,row.names=FALSE)
 
-  save(models,kappas,comment,pred.public,file=paste("model/",as.character(k),".RData",sep=""))
-  # return(list(models=models,kappas=kappas,pred.public=pred.public))
+  browser()
+  if(!have_prec)
+    save(models,kappas,comment,pred.public,file=paste("model/",as.character(k),".RData",sep=""))
+  else
+    save(models,kappas,precs,comment,pred.public,file=paste("model/",as.character(k),".RData",sep=""))
+                                        # return(list(models=models,kappas=kappas,pred.public=pred.public))
 }
