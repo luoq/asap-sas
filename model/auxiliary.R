@@ -208,18 +208,20 @@ train.cv.NB.Multinomial <- function(X,y,
   model <- list(subset=subset,nb=nb)
   return(list(model=model,kappa=kappa,prec=prec))
 }
-apply.model.NB.Multinomial <- function(model,X){
+apply.NB.Multinomial <- function(model,X){
   X <- X[,model$subset,drop=FALSE]
   predict.NB.Multinomial(model$nb,X)
 }
-train.cv.glmnet.with.nb <- function(X,y,
+train.cv.glmnet.with.calibrator <- function(X,y,
                                     cv.ctrl=list(K=10,split="random",max.measure="kappa"),
+                                    calibrator_type="nb",
                                     glmnet.ctrl=list(alpha=0.8,nlambda=100,standardize=FALSE)){
+  levels <- as.numeric(levels(as.factor(y)))
   n <- length(y)
   all.folds <- if(cv.ctrl$split=="random")
     all.folds <-cv.kfold.random(n,cv.ctrl$K)
   else if(cv.ctrl$split=="sequential")
-    cv.kfold.sequential(n,K)
+    cv.kfold.sequential(n,cv.ctrl$K)
   else
     stop("no such split method")  
   
@@ -228,9 +230,17 @@ train.cv.glmnet.with.nb <- function(X,y,
   temp <- lapply(1:cv.ctrl$K,function(k){
     omit <- all.folds[[k]]
     fit <- glmnet(X[-omit,,drop=FALSE],y[-omit],lambda=lambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
-    nb <- train.multi.NB.normal(predict(fit,X[-omit,,drop=FALSE]),y[-omit])
     pred <- predict(fit,X[omit,,drop=FALSE])
-    pred <- apply.multi.NB.normal(nb,pred)
+    if(calibrator_type=="nb"){
+      nb <- train.multi.NB.normal(predict(fit,X[-omit,,drop=FALSE]),y[-omit])
+      pred <- apply.multi.NB.normal(nb,pred)
+    }
+    else if(calibrator_type=="pa"){
+      proportion <- prop.table(table(y[-omit]))
+      pred <- apply(pred,2,function(x) proportional.assignment(x,proportion,levels))
+    }
+    else
+      stop("no such calibrator")
     prec <- apply(pred,2,function(pred)
                   precision(pred,y[omit]))
     kappa <- apply(pred,2,function(pred)
@@ -247,18 +257,26 @@ train.cv.glmnet.with.nb <- function(X,y,
   else if(cv.ctrl$max.measure=="precision")
     which.max(mean.prec)
   else
-    stop("no such measure")  
+    stop("no such calibrator")
   s <- lambda[i]
   kappa <- c(kappa[i,],mean.kappa[i])
   prec <- c(prec[i,],mean.prec[i])
   names(kappa) <- c(sapply(as.character(1:cv.ctrl$K),function(x) paste("fold",x,sep="")),"mean")
   names(prec) <- c(sapply(as.character(1:cv.ctrl$K),function(x) paste("fold",x,sep="")),"mean")
   
-  nb <- train.multi.NB.normal(predict(fit,X,s=s),y)
-  model <- list(fit=fit,s=s,nb=nb)
+  calibrator <- if(calibrator_type=="nb")
+    train.multi.NB.normal(predict(fit,X,s=s),y)
+  else if(calibrator_type=="pa")
+    prop.table(table(y))
+  else
+    stop("no such calibrator")
+  model <- list(levels=levels,fit=fit,s=s,calibrator_type=calibrator_type,calibrator=calibrator)
   return(list(model=model,kappa=kappa,prec=prec))
 }
-apply.model.glmnet.with.nb <- function(model,X){
+apply.glmnet.with.calibrator <- function(model,X){
   pred <- predict(model$fit,X,s=model$s)
-  pred <- apply.multi.NB.normal(model$nb,pred)
+  if(model$calibrator_type=="nb")
+    apply.multi.NB.normal(model$calibrator,pred)
+  else if(model$calibrator_type=="pa")
+    proportional.assignment(pred,model$calibrator,model$levels)
 }

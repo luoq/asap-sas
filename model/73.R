@@ -8,4 +8,4 @@ LAPLACE <- 1e-3
 train.model <- function(X,y)
   train.cv.NB.Multinomial(X,y,cv.ctrl=list(K=10,split="random", max.measure="precision"),
                           nb.ctrl=list(weight.fun=function(X,y) informationGainMultinomial(X,y,laplace=LAPLACE),laplace=LAPLACE))
-apply.model <- apply.model.NB.Multinomial
+apply.model <- apply.NB.Multinomial
