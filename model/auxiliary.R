@@ -219,7 +219,7 @@ train.cv.glmnet.with.calibrator <- function(X,y,
   levels <- as.numeric(levels(as.factor(y)))
   n <- length(y)
   all.folds <- if(cv.ctrl$split=="random")
-    all.folds <-cv.kfold.random(n,cv.ctrl$K)
+    cv.kfold.random(n,cv.ctrl$K)
   else if(cv.ctrl$split=="sequential")
     cv.kfold.sequential(n,cv.ctrl$K)
   else
