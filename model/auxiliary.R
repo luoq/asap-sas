@@ -131,11 +131,20 @@ train.NB.Multinomial <- function(X,y,laplace=1e-3){
   ps <- as.matrix(Diagonal(x=1/(rowSums(S)+m*laplace)) %*% (S+laplace))
   return(list(levels=as.numeric(levels(y)),logprior=logprior,ps=ps))
 }
-predict.NB.Multinomial <- function(model,X){
+predict.NB.Multinomial <- function(model,X,type="class"){
   Q <- log(model$ps)
   L <- X %*% t(Q)
   L <- L+outer(rep(1,nrow(X)),model$logprior)
-  model$levels[apply(L,1,which.max)]
+  if(type=="class")
+    model$levels[apply(L,1,which.max)]
+  else if(type=="probability"){
+    P <- t(apply(L,1,function(x) x-mean(x)))
+    P <- exp(P)
+    P <- Diagonal(x=1/rowSums(P)) %*% P
+    unname(as.matrix(P))
+  }
+  else
+    stop("no such return type")
 }
 train.and.predict.multi.NB.Multinomial <- function(X,y,X2,ord,ks,laplace=1e-3){
   y <- as.factor(y)
