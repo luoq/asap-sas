@@ -100,11 +100,13 @@ cv.kfold.stratified <- function(y,k,f){
   y <- as.factor(y)
   m <- length(levels(y))
   L <- lapply(levels(y),function(i) which(y==i))
-  N <- lapply(L,length)
-  O <- lapply(N,f)
+  N <- sapply(L,length)
+  S <- lapply(N,function(n) f(n,k))
   lapply(1:k,function(i)
-         do.call(c,lapply(1:m,function(j) L[j][O[j][i]])))
+         do.call(c,lapply(1:m,function(j) L[[j]][S[[j]][[i]]])))
 }
+cv.kfold.stratified.random <- function(y,k) cv.kfold.stratified(y,k,cv.kfold.random)
+cv.kfold.stratified.sequential <- function(y,k) cv.kfold.stratified(y,k,cv.kfold.sequential)
 square.split <- function(n,k){
   a <- (1:k)^2
   a <- a/a[length(a)]
