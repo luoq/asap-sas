@@ -61,7 +61,6 @@ run <- function(k){
             ,file=paste("model/","public",as.character(k),".csv",sep="")
             ,quote=FALSE,row.names=FALSE)
 
-  browser()
   if(!have_prec)
     save(models,kappas,comment,pred.public,file=paste("model/",as.character(k),".RData",sep=""))
   else

@@ -84,8 +84,8 @@ calc.conditional.KDE <- function(model,X,offset=NULL){
     X <- matrix(X,ncol=1)
   m <- ncol(X)
   L <- sapply(model$dists,function(D)
-         sapply(1:m,function(i)
-                apply.density(D[,i],X[,i])),simplify="array")
+              sapply(1:m,function(i)
+                     apply.density(D[,i],X[,i])),simplify="array")
   if(!is.null(offset))
     L <- aperm(outer(offset,rep(1,ncol(X))),c(1,3,2))+L
   L
@@ -119,4 +119,93 @@ proportional.assignment <- function(x,proportion,levels){
   for(i in 1:length(levels))
     x[ord[seq(p[i]+1,p[i+1])]] <- levels[i]
   return(x)
+}
+train.NB.Multinomial <- function(X,y,laplace=1e-3){
+  y <- as.factor(y)
+  if(is.vector(X))
+    X <- matrix(X,ncol=1)
+  MASK <- t(sapply(levels(y),function(i) y==i)*1)
+  logprior <- log(prop.table(rowSums(MASK)))
+  S <- MASK %*% X
+  m <- ncol(X)
+  ps <- as.matrix(Diagonal(x=1/(rowSums(S)+m*laplace)) %*% (S+laplace))
+  return(list(levels=as.numeric(levels(y)),logprior=logprior,ps=ps))
+}
+predict.NB.Multinomial <- function(model,X){
+  Q <- log(model$ps)
+  L <- X %*% t(Q)
+  L <- L+outer(rep(1,nrow(X)),model$logprior)
+  model$levels[apply(L,1,which.max)]
+}
+train.and.predict.multi.NB.Multinomial <- function(X,y,X2,ord,ks,laplace=1e-3){
+  y <- as.factor(y)
+  levels=as.numeric(levels(y))
+  if(is.vector(X))
+    X <- matrix(X,ncol=1)
+  MASK <- t(sapply(levels(y),function(i) y==i)*1)
+  logprior <- log(prop.table(rowSums(MASK)))
+  S <- MASK %*% X
+  sapply(ks,function(k){
+    subset <- ord[1:k]
+    S <- S[,subset,drop=FALSE]
+    X2 <- X2[,subset,drop=FALSE]
+
+                                        #train
+    m <- ncol(S)
+    ps <- as.matrix(Diagonal(x=1/(rowSums(S)+m*laplace)) %*% (S+laplace))
+
+                                        #predict
+    Q <- log(ps)
+    L <- X2 %*% t(Q)
+    L <- L+outer(rep(1,nrow(X2)),logprior)
+    pred <- levels[apply(L,1,which.max)]
+  })
+}
+train.cv.NB.Multinomial <- function(X,y,K=10,split="random",weight.fun=informationGainMultinomial,max.measure="kappa"){
+  n <- length(y)
+  all.folds <- if(split=="random")
+    all.folds <-cv.kfold.random(n,K)
+  else if(split=="sequential")
+    cv.kfold.sequential(n,K)
+  else
+    stop("no such split method")
+  ks <- square.split(ncol(X),100)
+  temp <- lapply(1:K,function(k){
+    omit <- all.folds[[k]]
+    w <- weight.fun(y[-omit],X[-omit,,drop=FALSE])
+    ord <- order(w,decreasing=TRUE)
+    pred <- train.and.predict.multi.NB.Multinomial(X[-omit,,drop=FALSE],y[-omit],X[omit,,drop=FALSE],ord,ks,laplace=LAPLACE)
+    prec <- apply(pred,2,function(pred)
+                  precision(pred,y[omit]))
+    kappa <- apply(pred,2,function(pred)
+                   ScoreQuadraticWeightedKappa(pred,y[omit]))
+    list(kappa=kappa,prec=prec)
+  })
+  kappa <- sapply(temp,function(x) x$kappa)
+  prec <- sapply(temp,function(x) x$prec)
+
+  mean.prec <- apply(prec,1,mean)
+  mean.kappa <- apply(kappa,1,MeanQuadraticWeightedKappa)
+  i <- if(max.measure=="kappa")
+    which.max(mean.kappa)
+  else if(max.measure=="precision")
+    which.max(mean.prec)
+  else
+    stop("no such measure")
+  kappa <- c(kappa[i,],mean.kappa[i])
+  prec <- c(prec[i,],mean.prec[i])
+  names(kappa) <- c(sapply(as.character(1:K),function(x) paste("fold",x,sep="")),"mean")
+  names(prec) <- c(sapply(as.character(1:K),function(x) paste("fold",x,sep="")),"mean")
+
+  w <- weight.fun(y,X)
+  ord <- order(w,decreasing=TRUE)
+  subset <- ord[1:ks[i]]
+
+  nb <- train.NB.Multinomial(X[,subset,drop=FALSE],y,laplace=LAPLACE)
+  model <- list(subset=subset,nb=nb)
+  return(list(model=model,kappa=kappa,prec=prec))
+}
+apply.model.NB.Multinomial <- function(model,X){
+  X <- X[,model$subset,drop=FALSE]
+  predict.NB.Multinomial(model$nb,X)
 }
