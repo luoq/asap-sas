@@ -150,11 +150,11 @@ train.and.predict.multi.NB.Multinomial <- function(X,y,X2,ord,ks,laplace=1e-3){
     S <- S[,subset,drop=FALSE]
     X2 <- X2[,subset,drop=FALSE]
 
-                                        #train
+    ##train
     m <- ncol(S)
     ps <- as.matrix(Diagonal(x=1/(rowSums(S)+m*laplace)) %*% (S+laplace))
 
-                                        #predict
+    ##predict
     Q <- log(ps)
     L <- X2 %*% t(Q)
     L <- L+outer(rep(1,nrow(X2)),logprior)
