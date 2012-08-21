@@ -169,6 +169,8 @@ train.cv.NB.Multinomial <- function(X,y,
     all.folds <-cv.kfold.random(n,cv.ctrl$K)
   else if(cv.ctrl$split=="sequential")
     cv.kfold.sequential(n,K)
+  else if(cv.ctrl$split=="stratified")
+    cv.kfold.stratified.random(y,cv.ctrl$K)
   else
     stop("no such split method")
   
@@ -222,6 +224,8 @@ train.cv.glmnet.with.calibrator <- function(X,y,
     cv.kfold.random(n,cv.ctrl$K)
   else if(cv.ctrl$split=="sequential")
     cv.kfold.sequential(n,cv.ctrl$K)
+  else if(cv.ctrl$split=="stratified")
+    cv.kfold.stratified.random(y,cv.ctrl$K)
   else
     stop("no such split method")  
   

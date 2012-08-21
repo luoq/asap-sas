@@ -97,13 +97,15 @@ cv.kfold.random <- function(n,k){
 cv.kfold.sequential <- function(n,k)
   split(1:n,rep(1:k,length=n))
 cv.kfold.stratified <- function(y,k,f){
+  require(permute)
   y <- as.factor(y)
   m <- length(levels(y))
   L <- lapply(levels(y),function(i) which(y==i))
   N <- sapply(L,length)
   S <- lapply(N,function(n) f(n,k))
-  lapply(1:k,function(i)
-         do.call(c,lapply(1:m,function(j) L[[j]][S[[j]][[i]]])))
+  res <- lapply(1:k,function(i)
+                do.call(c,lapply(1:m,function(j) L[[j]][S[[j]][[i]]])))
+  lapply(res,function(x) x[shuffle(length(x))])
 }
 cv.kfold.stratified.random <- function(y,k) cv.kfold.stratified(y,k,cv.kfold.random)
 cv.kfold.stratified.sequential <- function(y,k) cv.kfold.stratified(y,k,cv.kfold.sequential)
