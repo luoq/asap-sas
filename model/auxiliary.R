@@ -1,4 +1,4 @@
-estimate.conditional.normal.dist <- function(X,y,ZERO=1e-10,logprior=FALSE){
+estimate.conditional.normal.dist <- function(X,y,ZERO=1e-12,logprior=FALSE){
   y <- as.factor(y)
   if(is.vector(X))
     X <- matrix(X,ncol=1)
@@ -161,20 +161,23 @@ train.and.predict.multi.NB.Multinomial <- function(X,y,X2,ord,ks,laplace=1e-3){
     pred <- levels[apply(L,1,which.max)]
   })
 }
-train.cv.NB.Multinomial <- function(X,y,K=10,split="random",weight.fun=informationGainMultinomial,max.measure="kappa"){
+train.cv.NB.Multinomial <- function(X,y,
+                                    cv.ctrl=list(K=10,split="random",max.measure="kappa"),
+                                    nb.ctrl=list(weight.fun=informationGainMultinomial,laplace=1e-3)){
   n <- length(y)
-  all.folds <- if(split=="random")
-    all.folds <-cv.kfold.random(n,K)
-  else if(split=="sequential")
+  all.folds <- if(cv.ctrl$split=="random")
+    all.folds <-cv.kfold.random(n,cv.ctrl$K)
+  else if(cv.ctrl$split=="sequential")
     cv.kfold.sequential(n,K)
   else
     stop("no such split method")
+  
   ks <- square.split(ncol(X),100)
-  temp <- lapply(1:K,function(k){
+  temp <- lapply(1:cv.ctrl$K,function(k){
     omit <- all.folds[[k]]
-    w <- weight.fun(y[-omit],X[-omit,,drop=FALSE])
+    w <- nb.ctrl$weight.fun(y[-omit],X[-omit,,drop=FALSE])
     ord <- order(w,decreasing=TRUE)
-    pred <- train.and.predict.multi.NB.Multinomial(X[-omit,,drop=FALSE],y[-omit],X[omit,,drop=FALSE],ord,ks,laplace=LAPLACE)
+    pred <- train.and.predict.multi.NB.Multinomial(X[-omit,,drop=FALSE],y[-omit],X[omit,,drop=FALSE],ord,ks,laplace=nb.ctrl$laplace)
     prec <- apply(pred,2,function(pred)
                   precision(pred,y[omit]))
     kappa <- apply(pred,2,function(pred)
@@ -186,26 +189,76 @@ train.cv.NB.Multinomial <- function(X,y,K=10,split="random",weight.fun=informati
 
   mean.prec <- apply(prec,1,mean)
   mean.kappa <- apply(kappa,1,MeanQuadraticWeightedKappa)
-  i <- if(max.measure=="kappa")
+  i <- if(cv.ctrl$max.measure=="kappa")
     which.max(mean.kappa)
-  else if(max.measure=="precision")
+  else if(cv.ctrl$max.measure=="precision")
     which.max(mean.prec)
   else
     stop("no such measure")
   kappa <- c(kappa[i,],mean.kappa[i])
   prec <- c(prec[i,],mean.prec[i])
-  names(kappa) <- c(sapply(as.character(1:K),function(x) paste("fold",x,sep="")),"mean")
-  names(prec) <- c(sapply(as.character(1:K),function(x) paste("fold",x,sep="")),"mean")
+  names(kappa) <- c(sapply(as.character(1:cv.ctrl$K),function(x) paste("fold",x,sep="")),"mean")
+  names(prec) <- c(sapply(as.character(1:cv.ctrl$K),function(x) paste("fold",x,sep="")),"mean")
 
-  w <- weight.fun(y,X)
+  w <- nb.ctrl$weight.fun(y,X)
   ord <- order(w,decreasing=TRUE)
   subset <- ord[1:ks[i]]
 
-  nb <- train.NB.Multinomial(X[,subset,drop=FALSE],y,laplace=LAPLACE)
+  nb <- train.NB.Multinomial(X[,subset,drop=FALSE],y,laplace=nb.ctrl$laplace)
   model <- list(subset=subset,nb=nb)
   return(list(model=model,kappa=kappa,prec=prec))
 }
 apply.model.NB.Multinomial <- function(model,X){
   X <- X[,model$subset,drop=FALSE]
   predict.NB.Multinomial(model$nb,X)
+}
+train.cv.glmnet.with.nb <- function(X,y,
+                                    cv.ctrl=list(K=10,split="random",max.measure="kappa"),
+                                    glmnet.ctrl=list(alpha=0.8,nlambda=100,standardize=FALSE)){
+  n <- length(y)
+  all.folds <- if(cv.ctrl$split=="random")
+    all.folds <-cv.kfold.random(n,cv.ctrl$K)
+  else if(cv.ctrl$split=="sequential")
+    cv.kfold.sequential(n,K)
+  else
+    stop("no such split method")  
+  
+  fit <- glmnet(X,y,alpha=glmnet.ctrl$alpha,nlambda=glmnet.ctrl$nlambda,standardize=glmnet.ctrl$standardize,family="gaussian")
+  lambda <- fit$lambda
+  temp <- lapply(1:cv.ctrl$K,function(k){
+    omit <- all.folds[[k]]
+    fit <- glmnet(X[-omit,,drop=FALSE],y[-omit],lambda=lambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
+    nb <- train.multi.NB.normal(predict(fit,X[-omit,,drop=FALSE]),y[-omit])
+    pred <- predict(fit,X[omit,,drop=FALSE])
+    pred <- apply.multi.NB.normal(nb,pred)
+    prec <- apply(pred,2,function(pred)
+                  precision(pred,y[omit]))
+    kappa <- apply(pred,2,function(pred)
+                   ScoreQuadraticWeightedKappa(pred,y[omit]))
+    list(kappa=kappa,prec=prec)
+  })
+  kappa <- sapply(temp,function(x) x$kappa)
+  prec <- sapply(temp,function(x) x$prec)
+
+  mean.prec <- apply(prec,1,mean)
+  mean.kappa <- apply(kappa,1,MeanQuadraticWeightedKappa)
+  i <- if(cv.ctrl$max.measure=="kappa")
+    which.max(mean.kappa)
+  else if(cv.ctrl$max.measure=="precision")
+    which.max(mean.prec)
+  else
+    stop("no such measure")  
+  s <- lambda[i]
+  kappa <- c(kappa[i,],mean.kappa[i])
+  prec <- c(prec[i,],mean.prec[i])
+  names(kappa) <- c(sapply(as.character(1:cv.ctrl$K),function(x) paste("fold",x,sep="")),"mean")
+  names(prec) <- c(sapply(as.character(1:cv.ctrl$K),function(x) paste("fold",x,sep="")),"mean")
+  
+  nb <- train.multi.NB.normal(predict(fit,X,s=s),y)
+  model <- list(fit=fit,s=s,nb=nb)
+  return(list(model=model,kappa=kappa,prec=prec))
+}
+apply.model.glmnet.with.nb <- function(model,X){
+  pred <- predict(model$fit,X,s=model$s)
+  pred <- apply.multi.NB.normal(model$nb,pred)
 }

@@ -96,6 +96,15 @@ cv.kfold.random <- function(n,k){
 }
 cv.kfold.sequential <- function(n,k)
   split(1:n,rep(1:k,length=n))
+cv.kfold.stratified <- function(y,k,f){
+  y <- as.factor(y)
+  m <- length(levels(y))
+  L <- lapply(levels(y),function(i) which(y==i))
+  N <- lapply(L,length)
+  O <- lapply(N,f)
+  lapply(1:k,function(i)
+         do.call(c,lapply(1:m,function(j) L[j][O[j][i]])))
+}
 square.split <- function(n,k){
   a <- (1:k)^2
   a <- a/a[length(a)]
