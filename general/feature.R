@@ -89,12 +89,12 @@ apply_weight <- function(M,local_weight="tf",term_weight=idf,normalize=FALSE){
 }
 build_lsa <- function(X,dim_calc=dim_share(0.8)){
   if(!is.function(dim_calc)){
-    if(is.integer(dim_calc))
+    if(is.numeric(dim_calc))
       k <- dim_calc
     else
       k <- ceiling(dim_calc*nrow(X))
-    ## space <<- irlba(X,nu=dim_calc,nv=dim_calc)
-    space <- svd(X,nu=k,nv=k)
+    space <- irlba(X,nu=dim_calc,nv=dim_calc)
+    # space <- svd(X,nu=k,nv=k)
     space$d <- space$d[1:k]# This is needed if using svd because the size of d is not trunced
   }
   else{
