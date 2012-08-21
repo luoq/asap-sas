@@ -6,12 +6,15 @@ source('model/auxiliary.R')
 used_feature <- c(simple=FALSE,dtm=TRUE,corpus=FALSE)
 dtm_features_ctrl <- list(mingram=1,maxgram=3,local_weight="tf",term_weight=NULL)
 LAPLACE <- 1e-3
-get_nbs <- function(X,y,subsets,levels,laplace)
-  lapply(1:length(subsets),function(i){
-    subset <- subsets[[i]]
+get_nbs <- function(X,y,ks,levels,nb.ctrl)
+  lapply(1:length(ks),function(i){
     y <- 1*(y<=levels[i])
+    w <- nb.ctrl$weight.fun(y,X)
+    ord <- order(w,decreasing=TRUE)
+    subset <- ord[1:ks[i]]
     X <- X[,subset,drop=FALSE]
-    train.NB.Multinomial(X,y,laplace=laplace)
+    nb <- train.NB.Multinomial(X,y,laplace=nb.ctrl$laplace)
+    list(nb=nb,subset=subset)
   })
 get_nb.features <- function(nbs,subsets,X)
   sapply(1:length(nbs),function(i){
@@ -36,16 +39,17 @@ train.model <- function(X,y,
   else
     stop("no such split method")
 
-  select.subset <- function(X,y){
+  train.nb <- function(X,y){
     temp <- train.cv.NB.Multinomial(X,y,
                                     cv.ctrl=list(K=5,split="random",max.measure="precision"),
-                                    nb.ctrl=list(weight.fun=informationGainMultinomial,laplace=1e-3))
-    temp$model$subset
+                                    nb.ctrl=list(weight.fun=nb.ctrl$weight.fun,laplace=1e-3))
+    temp$model
   }
-  levels.init <- levels[1:(length(levels)-1)]
-  subsets <- lapply(levels.init,function(i) select.subset(X,1*(y<=i)))
+  models <- lapply(levels[1:(length(levels)-1)],function(i) train.nb(X,1*(y<=i)))
 
-  nbs <- get_nbs(X,y,subsets,levels,laplace=nb.ctrl$laplace)
+  subsets <- lapply(models,function(x) x$subset)
+  nbs <- lapply(models,function(x) x$nb)
+  ks <- sapply(subsets,length)
   nb.features <- get_nb.features(nbs,subsets,X)
 
   XX <- cBind(nb.features,X)
@@ -58,7 +62,10 @@ train.model <- function(X,y,
     y1 <- y[-omit]
     y2 <- y[omit]
 
-    nbs <- get_nbs(X1,y1,subsets,levels,laplace=nb.ctrl$laplace)
+    models <- get_nbs(X1,y1,ks,levels,nb.ctrl=nb.ctrl)
+    subsets <- lapply(models,function(x) x$subset)
+    nbs <- lapply(models,function(x) x$nb)
+    
     nb.features1 <- get_nb.features(nbs,subsets,X1)
     nb.features2 <- get_nb.features(nbs,subsets,X2)
     XX1 <- cBind(nb.features1,X1)
