@@ -266,6 +266,7 @@ apply.NB.Multinomial <- function(model,X){
     predict.NB.Multinomial(model$nb,X)
 }
 train.cv.glmnet.with.calibrator <- function(X,y,
+                                            transformer1=function(X,y) list(X=X,y=y,transformer2=identity),
                                             cv.ctrl=list(K=10,split="random",max.measure="kappa"),
                                             calibrator_type="nb",
                                             glmnet.ctrl=list(alpha=0.8,nlambda=100,standardize=FALSE),
@@ -281,15 +282,29 @@ train.cv.glmnet.with.calibrator <- function(X,y,
   else
     stop("no such split method")
 
-  fit <- glmnet(X,y,alpha=glmnet.ctrl$alpha,nlambda=glmnet.ctrl$nlambda,standardize=glmnet.ctrl$standardize,family="gaussian")
+  temp <- transformer1(X,y)
+  fit <- glmnet(temp$X,temp$y,alpha=glmnet.ctrl$alpha,nlambda=glmnet.ctrl$nlambda,standardize=glmnet.ctrl$standardize,family="gaussian")
+  transformer2 <- temp$transformer2
   lambda <- fit$lambda
   temp <- lapply(1:cv.ctrl$K,function(k){
     omit <- all.folds[[k]]
-    fit <- glmnet(X[-omit,,drop=FALSE],y[-omit],lambda=lambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
-    pred <- predict(fit,X[omit,,drop=FALSE])
+    X1 <- X[-omit,,drop=FALSE]
+    y1 <- y[-omit]
+    temp <- transformer1(X1,y1)
+    XX1 <- temp$X
+    yy1 <- temp$y
+    transformer2 <- temp$transformer2
+    fit <- glmnet(XX1,yy1,lambda=lambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
+    X2 <- X[omit,,drop=FALSE]
+    y2 <- y[omit]
+    XX2 <- transformer2(X2)
+    pred <- predict(fit,XX2)
     if(calibrator_type=="nb"){
-      nb <- train.multi.NB.normal(predict(fit,X[-omit,,drop=FALSE]),y[-omit])
-      pred <- apply.multi.NB.normal(nb,pred,type=nb.ctrl$criterion)
+      nb <- train.multi.NB.normal(predict(fit,XX1),yy1)
+      pred <- if(nb.ctrl$criterion=="min.square.loss")
+        apply.multi.NB.normal(nb,pred,type=nb.ctrl$criterion)
+      else
+        apply.multi.NB.normal(nb,pred)
     }
     else if(calibrator_type=="pa"){
       proportion <- prop.table(table(y[-omit]))
@@ -326,11 +341,12 @@ train.cv.glmnet.with.calibrator <- function(X,y,
     prop.table(table(y))
   else
     stop("no such calibrator")
-  model <- list(levels=levels,fit=fit,s=s,calibrator_type=calibrator_type,calibrator=calibrator,criterion=nb.ctrl$criterion)
+  model <- list(levels=levels,transformer2=transformer2,fit=fit,s=s,calibrator_type=calibrator_type,calibrator=calibrator,criterion=nb.ctrl$criterion)
   return(list(model=model,kappa=kappa,prec=prec))
 }
 apply.glmnet.with.calibrator <- function(model,X){
-  pred <- predict(model$fit,X,s=model$s)
+  XX <- model$transformer2(X)
+  pred <- predict(model$fit,XX,s=model$s)
   if(model$calibrator_type=="nb")
     if(model$criterion=="min.square.loss")
       apply.multi.NB.normal(model$calibrator,pred,type=model$criterion)
