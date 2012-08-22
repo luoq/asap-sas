@@ -115,8 +115,8 @@ square.split <- function(n,k){
   x <- ceiling(n*a)
   i <- 1
   ## The leading sequence may keep constant.check it
-  while(x[i]==x[i+1]){
-    x[i+1] <- x[i+1]+1
+  while(x[i]>=x[i+1]){
+    x[i+1] <- x[i]+1
     i <- i+1
   }
   x

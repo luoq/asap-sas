@@ -148,7 +148,8 @@ train.NB.Multinomial <- function(X,y,laplace=1e-3){
   S <- MASK %*% X
   m <- ncol(X)
   ps <- as.matrix(Diagonal(x=1/(rowSums(S)+m*laplace)) %*% (S+laplace))
-  return(list(levels=as.numeric(levels(y)),logprior=logprior,ps=ps))
+  Q <- log(ps)
+  return(list(levels=as.numeric(levels(y)),logprior=logprior,Q=Q))
 }
 L.to.P <- function(L){
   P <- t(apply(L,1,function(x) x-mean(x)))
@@ -157,8 +158,7 @@ L.to.P <- function(L){
   unname(as.matrix(P))
 }
 predict.NB.Multinomial <- function(model,X,type="class"){
-  Q <- log(model$ps)
-  L <- X %*% t(Q)
+  L <- X %*% t(model$Q)
   L <- L+outer(rep(1,nrow(X)),model$logprior)
   if(type=="class")
     model$levels[apply(L,1,which.max)]
@@ -283,7 +283,9 @@ train.cv.glmnet.with.calibrator <- function(X,y,
     stop("no such split method")
 
   temp <- transformer1(X,y)
-  fit <- glmnet(temp$X,temp$y,alpha=glmnet.ctrl$alpha,nlambda=glmnet.ctrl$nlambda,standardize=glmnet.ctrl$standardize,family="gaussian")
+  XX <- temp$X
+  yy <- temp$y
+  fit <- glmnet(XX,yy,alpha=glmnet.ctrl$alpha,nlambda=glmnet.ctrl$nlambda,standardize=glmnet.ctrl$standardize,family="gaussian")
   transformer2 <- temp$transformer2
   lambda <- fit$lambda
   temp <- lapply(1:cv.ctrl$K,function(k){
@@ -336,7 +338,7 @@ train.cv.glmnet.with.calibrator <- function(X,y,
   names(prec) <- c(sapply(as.character(1:cv.ctrl$K),function(x) paste("fold",x,sep="")),"mean")
 
   calibrator <- if(calibrator_type=="nb")
-    train.multi.NB.normal(predict(fit,X,s=s),y)
+    train.multi.NB.normal(predict(fit,XX,s=s),yy)
   else if(calibrator_type=="pa")
     prop.table(table(y))
   else
@@ -354,4 +356,41 @@ apply.glmnet.with.calibrator <- function(model,X){
       apply.multi.NB.normal(model$calibrator,pred)
   else if(model$calibrator_type=="pa")
     proportional.assignment(pred,model$calibrator,model$levels)
+}
+nbm.transformer <- function(X,y,laplace=1e-3,weight.fun=informationGainMultinomial){
+  levels <- as.numeric(levels(as.factor(y)))
+  ks <- square.split(ncol(X),100)
+  train.nbs <- function(X,y){
+    w <- weight.fun(y,X)
+    ord <- order(w,decreasing=TRUE)
+    y <- as.factor(y)
+    levels=as.numeric(levels(y))
+    MASK <- t(sapply(levels(y),function(i) y==i)*1)
+    logprior <- log(prop.table(rowSums(MASK)))
+    S <- MASK %*% X
+    lapply(ks,function(k){
+      subset <- ord[1:k]
+      S <- S[,subset,drop=FALSE]
+      m <- ncol(S)
+      ps <- as.matrix(Diagonal(x=1/(rowSums(S)+m*laplace)) %*% (S+laplace))
+      Q <- log(ps)
+      nb <- list(levels=levels,logprior=logprior,Q=Q)
+      list(subset=subset,nb=nb,criterion="max.probability")
+    })
+  }
+  models <- lapply(levels[1:(length(levels)-1)],function(i)
+                   train.nbs(X,1*(y<=i)))
+  models <- do.call(c,models)
+  nb.features <- sapply(models,function(model) apply.NB.Multinomial(model,X))
+  colnames(nb.features) <- sapply(as.character(1:ncol(nb.features)),function(x) paste("nb.",x,sep=""))
+  mask <- apply(nb.features,2,sd)>1e-10
+  models <- models[mask]
+  nb.features <- nb.features[,mask]
+  nb.names <- colnames(nb.features)
+  transformer2 <- function(X){
+    nb.features <- sapply(models,function(model) apply.NB.Multinomial(model,X))
+    colnames(nb.features) <- nb.names
+    cBind(nb.features,1*(X!=0))
+  }
+  list(X=cBind(nb.features,1*(X!=0)),y=y,transformer2=transformer2)
 }
