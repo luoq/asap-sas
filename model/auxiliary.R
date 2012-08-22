@@ -405,6 +405,7 @@ nbm.all.transformer <- function(X,y,laplace=1e-3,weight.fun=informationGainMulti
   list(X=cBind(nb.features,1*(X!=0)),y=y,transformer2=transformer2)
 }
 train.cv.glmnet.with.selected.nbms <- function(X,y,
+                                               fit.on.test=FALSE,
                                                cv.ctrl=list(K=10,split="random",max.measure="kappa"),
                                                nb.ctrl=list(weight.fun=informationGainMultinomial,laplace=1e-3,output.probability=FALSE),
                                                glmnet.ctrl=list(alpha=0.8,nlambda=100,standardize=FALSE),
@@ -419,6 +420,14 @@ train.cv.glmnet.with.selected.nbms <- function(X,y,
   ks <- sapply(levels[1:(length(levels)-1)],function(i) select.k(X,1*(y<=i)))
 
   transformer1 <- function(X,y){
+    if(fit.on.test){
+      n <- nrow(X)
+      index <- sample(n,ceiling(n*0.5))
+      X2 <- X[-index,,drop=FALSE]
+      y2 <- y2[-index]
+      X <- X[index,,drop=FALSE]
+      y <- y[-index]
+    }
     nbs <- lapply(1:length(ks),function(i){
       y <- 1*(y<=levels[i])
       w <- nb.ctrl$weight.fun(y,X)
@@ -436,7 +445,10 @@ train.cv.glmnet.with.selected.nbms <- function(X,y,
       colnames(nb.features) <- sapply(as.character(1:ncol(nb.features)),function(x) paste("nb.",x,sep=""))
       cBind(nb.features,1*(X!=0))
     }
-    list(X=transformer2(X),y=y,transformer2=transformer2)
+    if(fit.on.test)
+      list(X=transformer2(X2),y=y2,transformer2=transformer2)
+    else
+      list(X=transformer2(X),y=y,transformer2=transformer2)
   }
   train.cv.glmnet.with.calibrator(X,y,
                                   transformer1=transformer1,
