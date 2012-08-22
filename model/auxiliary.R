@@ -262,10 +262,12 @@ apply.NB.Multinomial <- function(model,X,output.probability=FALSE){
   X <- X[,model$subset,drop=FALSE]
   if(output.probability)
     predict.NB.Multinomial(model$nb,X,type="probability")
+  else if(model$criterion=="max.probability")
+    predict.NB.Multinomial(model$nb,X)
   else if(model$criterion=="min.square.loss")
     predict.NB.Multinomial(model$nb,X,type=model$criterion)
   else
-    predict.NB.Multinomial(model$nb,X)
+    stop("No such criterion")
 }
 train.cv.glmnet.with.calibrator <- function(X,y,
                                             transformer1=function(X,y) list(X=X,y=y,transformer2=identity),
@@ -401,4 +403,42 @@ nbm.all.transformer <- function(X,y,laplace=1e-3,weight.fun=informationGainMulti
     cBind(nb.features,1*(X!=0))
   }
   list(X=cBind(nb.features,1*(X!=0)),y=y,transformer2=transformer2)
+}
+train.cv.glmnet.with.selected.nbms <- function(X,y,
+                                               cv.ctrl=list(K=10,split="random",max.measure="kappa"),
+                                               nb.ctrl=list(weight.fun=informationGainMultinomial,laplace=1e-3,output.probability=FALSE),
+                                               glmnet.ctrl=list(alpha=0.8,nlambda=100,standardize=FALSE),
+                                               calibrator_type="nb"){
+  levels <- as.numeric(levels(as.factor(y)))
+  select.k <- function(X,y){
+    temp <- train.cv.NB.Multinomial(X,y,
+                                    cv.ctrl=list(K=10,split="random",max.measure="precision"),
+                                    nb.ctrl=list(weight.fun=nb.ctrl$weight.fun,laplace=nb.ctrl$laplace))
+    length(temp$model$subset)
+  }
+  ks <- sapply(levels[1:(length(levels)-1)],function(i) select.k(X,1*(y<=i)))
+
+  transformer1 <- function(X,y){
+    nbs <- lapply(1:length(ks),function(i){
+      y <- 1*(y<=levels[i])
+      w <- nb.ctrl$weight.fun(y,X)
+      ord <- order(w,decreasing=TRUE)
+      subset <- ord[1:ks[i]]
+      X <- X[,subset,drop=FALSE]
+      nb <- train.NB.Multinomial(X,y,laplace=nb.ctrl$laplace)
+      list(nb=nb,subset=subset,criterion="max.probability")
+    })
+    transformer2 <- function(X){
+      nb.features <- if(nb.ctrl$output.probability)
+        sapply(nbs,function(model) apply.NB.Multinomial(model,X,output.probability=TRUE)[,1])
+      else
+        sapply(nbs,function(model) apply.NB.Multinomial(model,X))
+      colnames(nb.features) <- sapply(as.character(1:ncol(nb.features)),function(x) paste("nb.",x,sep=""))
+      cBind(nb.features,1*(X!=0))
+    }
+    list(X=transformer2(X),y=y,transformer2=transformer2)
+  }
+  train.cv.glmnet.with.calibrator(X,y,
+                                  transformer1=transformer1,
+                                  cv.ctrl=cv.ctrl,glmnet.ctrl=glmnet.ctrl,calibrator_type=calibrator_type)
 }
