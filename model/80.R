@@ -52,7 +52,7 @@ train.model <- function(X,y,
   ks <- sapply(subsets,length)
   nb.features <- get_nb.features(nbs,subsets,X)
 
-  XX <- cBind(nb.features,X)
+  XX <- cBind(nb.features,1*(X>0))
   fit <- glmnet(XX,y,alpha=glmnet.ctrl$alpha,nlambda=glmnet.ctrl$nlambda,standardize=glmnet.ctrl$standardize,family="gaussian")
   lambda <- fit$lambda
   temp <- lapply(1:cv.ctrl$K,function(k){
@@ -68,8 +68,8 @@ train.model <- function(X,y,
     
     nb.features1 <- get_nb.features(nbs,subsets,X1)
     nb.features2 <- get_nb.features(nbs,subsets,X2)
-    XX1 <- cBind(nb.features1,X1)
-    XX2 <- cBind(nb.features2,X2)
+    XX1 <- cBind(nb.features1,1*(X1>0))
+    XX2 <- cBind(nb.features2,1*(X2>0))
     
     fit <- glmnet(XX1,y1,lambda=lambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
     pred2 <- predict(fit,XX2)
@@ -118,7 +118,7 @@ train.model <- function(X,y,
 }
 apply.model <- function(model,X){
   nb.features <- get_nb.features(model$nbs,model$subsets,X)
-  XX <- cBind(nb.features,X)
+  XX <- cBind(nb.features,1*(X>0))
   pred <- predict(model$fit,XX,s=model$s)
   if(model$calibrator_type=="nb")
     apply.multi.NB.normal(model$calibrator,pred)
