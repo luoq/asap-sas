@@ -31,18 +31,37 @@ calc.conditional.normal.dist <- function(model,X,offset=NULL){
     L <- aperm(outer(offset,rep(1,ncol(X))),c(1,3,2))+L
   L
 }
-apply.multi.NB.normal <- function(model,X,add.prior=TRUE){
+apply.multi.NB.normal <- function(model,X,add.prior=TRUE,type="class"){
   if(is.vector(X))
     X <- matrix(X,ncol=1)
   if(add.prior)
     L <- calc.conditional.normal.dist(model,X,offset=outer(rep(1,nrow(X)),model$logprior))
   else
     L <- calc.conditional.normal.dist(model,X)
-  pred <- apply(L,c(1,2),which.max)
-  if(ncol(pred)==1)
-    model$levels[pred]
+  if(type=="class"){
+    pred <- apply(L,c(1,2),which.max)
+    if(ncol(pred)==1)
+      model$levels[pred]
+    else
+      matrix(model$levels[pred],nrow=nrow(pred))
+  }
+  else if(type=="probability")
+    L.to.P.2(L)
+  else if(type=="min.square.loss"){
+    nc <- length(model$levels)
+    d <- dim(L)
+    dim(L) <- c(d[1]*d[2],d[3])
+    P <- L.to.P(L)
+    Loss <- P %*% outer(1:nc,1:nc,function(x,y) (x-y)^2)
+    dim(Loss) <- d
+    pred <- apply(Loss,c(1,2),which.min)
+    if(ncol(pred)==1)
+      model$levels[pred]
+    else
+      matrix(model$levels[pred],nrow=nrow(pred))
+  }
   else
-    matrix(model$levels[pred],nrow=nrow(pred))
+    stop("no such return type")
 }
 apply.NB.normal <- function(model,X,add.prior=TRUE){
   if(is.vector(X))
@@ -249,7 +268,8 @@ apply.NB.Multinomial <- function(model,X){
 train.cv.glmnet.with.calibrator <- function(X,y,
                                             cv.ctrl=list(K=10,split="random",max.measure="kappa"),
                                             calibrator_type="nb",
-                                            glmnet.ctrl=list(alpha=0.8,nlambda=100,standardize=FALSE)){
+                                            glmnet.ctrl=list(alpha=0.8,nlambda=100,standardize=FALSE),
+                                            nb.ctrl=list(criterion="max.probability")){
   levels <- as.numeric(levels(as.factor(y)))
   n <- length(y)
   all.folds <- if(cv.ctrl$split=="random")
@@ -269,7 +289,7 @@ train.cv.glmnet.with.calibrator <- function(X,y,
     pred <- predict(fit,X[omit,,drop=FALSE])
     if(calibrator_type=="nb"){
       nb <- train.multi.NB.normal(predict(fit,X[-omit,,drop=FALSE]),y[-omit])
-      pred <- apply.multi.NB.normal(nb,pred)
+      pred <- apply.multi.NB.normal(nb,pred,type=nb.ctrl$criterion)
     }
     else if(calibrator_type=="pa"){
       proportion <- prop.table(table(y[-omit]))
@@ -293,7 +313,7 @@ train.cv.glmnet.with.calibrator <- function(X,y,
   else if(cv.ctrl$max.measure=="precision")
     which.max(mean.prec)
   else
-    stop("no such calibrator")
+    stop("no such measure")
   s <- lambda[i]
   kappa <- c(kappa[i,],mean.kappa[i])
   prec <- c(prec[i,],mean.prec[i])
@@ -306,13 +326,16 @@ train.cv.glmnet.with.calibrator <- function(X,y,
     prop.table(table(y))
   else
     stop("no such calibrator")
-  model <- list(levels=levels,fit=fit,s=s,calibrator_type=calibrator_type,calibrator=calibrator)
+  model <- list(levels=levels,fit=fit,s=s,calibrator_type=calibrator_type,calibrator=calibrator,criterion=nb.ctrl$criterion)
   return(list(model=model,kappa=kappa,prec=prec))
 }
 apply.glmnet.with.calibrator <- function(model,X){
   pred <- predict(model$fit,X,s=model$s)
   if(model$calibrator_type=="nb")
-    apply.multi.NB.normal(model$calibrator,pred)
+    if(model$criterion=="min.square.loss")
+      apply.multi.NB.normal(model$calibrator,pred,type=model$criterion)
+    else
+      apply.multi.NB.normal(model$calibrator,pred)
   else if(model$calibrator_type=="pa")
     proportional.assignment(pred,model$calibrator,model$levels)
 }
