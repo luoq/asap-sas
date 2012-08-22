@@ -131,22 +131,30 @@ train.NB.Multinomial <- function(X,y,laplace=1e-3){
   ps <- as.matrix(Diagonal(x=1/(rowSums(S)+m*laplace)) %*% (S+laplace))
   return(list(levels=as.numeric(levels(y)),logprior=logprior,ps=ps))
 }
+L.to.P <- function(L){
+  P <- t(apply(L,1,function(x) x-mean(x)))
+  P <- exp(P)
+  P <- Diagonal(x=1/rowSums(P)) %*% P
+  unname(as.matrix(P))
+}
 predict.NB.Multinomial <- function(model,X,type="class"){
   Q <- log(model$ps)
   L <- X %*% t(Q)
   L <- L+outer(rep(1,nrow(X)),model$logprior)
   if(type=="class")
     model$levels[apply(L,1,which.max)]
-  else if(type=="probability"){
-    P <- t(apply(L,1,function(x) x-mean(x)))
-    P <- exp(P)
-    P <- Diagonal(x=1/rowSums(P)) %*% P
-    unname(as.matrix(P))
+  else if(type=="probability")
+    L.to.P(L)
+  else if(type=="min.square.loss"){
+    nc <- length(model$levels)
+    P <- L.to.P(L)
+    Loss <- P %*% outer(1:nc,1:nc,function(x,y) (x-y)^2)
+    model$levels[apply(L,1,which.min)]
   }
   else
     stop("no such return type")
 }
-train.and.predict.multi.NB.Multinomial <- function(X,y,X2,ord,ks,laplace=1e-3){
+train.and.predict.multi.NB.Multinomial <- function(X,y,X2,ord,ks,laplace=1e-3,criterion="max.probability"){
   y <- as.factor(y)
   levels=as.numeric(levels(y))
   if(is.vector(X))
@@ -162,17 +170,26 @@ train.and.predict.multi.NB.Multinomial <- function(X,y,X2,ord,ks,laplace=1e-3){
     ##train
     m <- ncol(S)
     ps <- as.matrix(Diagonal(x=1/(rowSums(S)+m*laplace)) %*% (S+laplace))
+    Q <- log(ps)
 
     ##predict
-    Q <- log(ps)
     L <- X2 %*% t(Q)
     L <- L+outer(rep(1,nrow(X2)),logprior)
-    pred <- levels[apply(L,1,which.max)]
+    pred <- if(criterion=="max.probability")
+      levels[apply(L,1,which.max)]
+    else if(criterion=="min.square.loss"){
+      nc <- length(levels)
+      P <- L.to.P(L)
+      Loss <- P %*% outer(1:nc,1:nc,function(x,y) (x-y)^2)
+      levels[apply(L,1,which.min)]
+    }
+    else
+      stop("no such criterion")
   })
 }
 train.cv.NB.Multinomial <- function(X,y,
                                     cv.ctrl=list(K=10,split="random",max.measure="kappa"),
-                                    nb.ctrl=list(weight.fun=informationGainMultinomial,laplace=1e-3)){
+                                    nb.ctrl=list(weight.fun=informationGainMultinomial,laplace=1e-3,criterion="max.probability")){
   n <- length(y)
   all.folds <- if(cv.ctrl$split=="random")
     all.folds <-cv.kfold.random(n,cv.ctrl$K)
@@ -182,13 +199,16 @@ train.cv.NB.Multinomial <- function(X,y,
     cv.kfold.stratified.random(y,cv.ctrl$K)
   else
     stop("no such split method")
-  
+  if(is.null(nb.ctrl$criterion))
+    nb.ctrl$criterion="max.probability"
+
   ks <- square.split(ncol(X),100)
   temp <- lapply(1:cv.ctrl$K,function(k){
     omit <- all.folds[[k]]
     w <- nb.ctrl$weight.fun(y[-omit],X[-omit,,drop=FALSE])
     ord <- order(w,decreasing=TRUE)
-    pred <- train.and.predict.multi.NB.Multinomial(X[-omit,,drop=FALSE],y[-omit],X[omit,,drop=FALSE],ord,ks,laplace=nb.ctrl$laplace)
+    pred <- train.and.predict.multi.NB.Multinomial(X[-omit,,drop=FALSE],y[-omit],X[omit,,drop=FALSE],ord,ks,
+                                                   laplace=nb.ctrl$laplace,criterion=nb.ctrl$criterion)
     prec <- apply(pred,2,function(pred)
                   precision(pred,y[omit]))
     kappa <- apply(pred,2,function(pred)
@@ -216,17 +236,20 @@ train.cv.NB.Multinomial <- function(X,y,
   subset <- ord[1:ks[i]]
 
   nb <- train.NB.Multinomial(X[,subset,drop=FALSE],y,laplace=nb.ctrl$laplace)
-  model <- list(subset=subset,nb=nb)
+  model <- list(subset=subset,nb=nb,criterion=nb.ctrl$criterion)
   return(list(model=model,kappa=kappa,prec=prec))
 }
 apply.NB.Multinomial <- function(model,X){
   X <- X[,model$subset,drop=FALSE]
-  predict.NB.Multinomial(model$nb,X)
+  if(model$criterion=="min.square.loss")
+    predict.NB.Multinomial(model$nb,X,type=model$criterion)
+  else
+    predict.NB.Multinomial(model$nb,X)
 }
 train.cv.glmnet.with.calibrator <- function(X,y,
-                                    cv.ctrl=list(K=10,split="random",max.measure="kappa"),
-                                    calibrator_type="nb",
-                                    glmnet.ctrl=list(alpha=0.8,nlambda=100,standardize=FALSE)){
+                                            cv.ctrl=list(K=10,split="random",max.measure="kappa"),
+                                            calibrator_type="nb",
+                                            glmnet.ctrl=list(alpha=0.8,nlambda=100,standardize=FALSE)){
   levels <- as.numeric(levels(as.factor(y)))
   n <- length(y)
   all.folds <- if(cv.ctrl$split=="random")
@@ -236,8 +259,8 @@ train.cv.glmnet.with.calibrator <- function(X,y,
   else if(cv.ctrl$split=="stratified")
     cv.kfold.stratified.random(y,cv.ctrl$K)
   else
-    stop("no such split method")  
-  
+    stop("no such split method")
+
   fit <- glmnet(X,y,alpha=glmnet.ctrl$alpha,nlambda=glmnet.ctrl$nlambda,standardize=glmnet.ctrl$standardize,family="gaussian")
   lambda <- fit$lambda
   temp <- lapply(1:cv.ctrl$K,function(k){
@@ -276,7 +299,7 @@ train.cv.glmnet.with.calibrator <- function(X,y,
   prec <- c(prec[i,],mean.prec[i])
   names(kappa) <- c(sapply(as.character(1:cv.ctrl$K),function(x) paste("fold",x,sep="")),"mean")
   names(prec) <- c(sapply(as.character(1:cv.ctrl$K),function(x) paste("fold",x,sep="")),"mean")
-  
+
   calibrator <- if(calibrator_type=="nb")
     train.multi.NB.normal(predict(fit,X,s=s),y)
   else if(calibrator_type=="pa")
