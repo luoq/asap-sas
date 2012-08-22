@@ -359,7 +359,7 @@ apply.glmnet.with.calibrator <- function(model,X){
   else if(model$calibrator_type=="pa")
     proportional.assignment(pred,model$calibrator,model$levels)
 }
-nbm.transformer <- function(X,y,laplace=1e-3,weight.fun=informationGainMultinomial,output.probability=FALSE){
+nbm.all.transformer <- function(X,y,laplace=1e-3,weight.fun=informationGainMultinomial,output.probability=FALSE){
   levels <- as.numeric(levels(as.factor(y)))
   ks <- square.split(ncol(X),100)
   train.nbs <- function(X,y){
