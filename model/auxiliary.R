@@ -258,9 +258,11 @@ train.cv.NB.Multinomial <- function(X,y,
   model <- list(subset=subset,nb=nb,criterion=nb.ctrl$criterion)
   return(list(model=model,kappa=kappa,prec=prec))
 }
-apply.NB.Multinomial <- function(model,X){
+apply.NB.Multinomial <- function(model,X,output.probability=FALSE){
   X <- X[,model$subset,drop=FALSE]
-  if(model$criterion=="min.square.loss")
+  if(output.probability)
+    predict.NB.Multinomial(model$nb,X,type="probability")
+  else if(model$criterion=="min.square.loss")
     predict.NB.Multinomial(model$nb,X,type=model$criterion)
   else
     predict.NB.Multinomial(model$nb,X)
@@ -357,7 +359,7 @@ apply.glmnet.with.calibrator <- function(model,X){
   else if(model$calibrator_type=="pa")
     proportional.assignment(pred,model$calibrator,model$levels)
 }
-nbm.transformer <- function(X,y,laplace=1e-3,weight.fun=informationGainMultinomial){
+nbm.transformer <- function(X,y,laplace=1e-3,weight.fun=informationGainMultinomial,output.probability=FALSE){
   levels <- as.numeric(levels(as.factor(y)))
   ks <- square.split(ncol(X),100)
   train.nbs <- function(X,y){
@@ -381,14 +383,20 @@ nbm.transformer <- function(X,y,laplace=1e-3,weight.fun=informationGainMultinomi
   models <- lapply(levels[1:(length(levels)-1)],function(i)
                    train.nbs(X,1*(y<=i)))
   models <- do.call(c,models)
-  nb.features <- sapply(models,function(model) apply.NB.Multinomial(model,X))
+  nb.features <- if(output.probability)
+    sapply(models,function(model) apply.NB.Multinomial(model,X,output.probability=TRUE)[,1])
+  else
+    sapply(models,function(model) apply.NB.Multinomial(model,X))
   colnames(nb.features) <- sapply(as.character(1:ncol(nb.features)),function(x) paste("nb.",x,sep=""))
   mask <- apply(nb.features,2,sd)>1e-10
   models <- models[mask]
   nb.features <- nb.features[,mask]
   nb.names <- colnames(nb.features)
   transformer2 <- function(X){
-    nb.features <- sapply(models,function(model) apply.NB.Multinomial(model,X))
+    nb.features <- if(output.probability)
+      sapply(models,function(model) apply.NB.Multinomial(model,X,output.probability=TRUE)[,1])
+    else
+      sapply(models,function(model) apply.NB.Multinomial(model,X))
     colnames(nb.features) <- nb.names
     cBind(nb.features,1*(X!=0))
   }
