@@ -24,7 +24,7 @@ get_nb.features <- function(nbs,subsets,X)
     predict.NB.Multinomial(nb,X,type="probability")[,1]
   })
 train.model <- function(X,y,
-                        cv.ctrl=list(K=5,split="random",max.measure="kappa"),
+                        cv.ctrl=list(K=10,split="random",max.measure="kappa"),
                         calibrator_type="nb",
                         glmnet.ctrl=list(alpha=0.8,nlambda=100,standardize=FALSE),
                         nb.ctrl=list(weight.fun=informationGainMultinomial,laplace=1e-3)){
@@ -41,7 +41,7 @@ train.model <- function(X,y,
 
   train.nb <- function(X,y){
     temp <- train.cv.NB.Multinomial(X,y,
-                                    cv.ctrl=list(K=5,split="random",max.measure="precision"),
+                                    cv.ctrl=list(K=10,split="random",max.measure="precision"),
                                     nb.ctrl=list(weight.fun=nb.ctrl$weight.fun,laplace=1e-3))
     temp$model
   }
