@@ -44,7 +44,12 @@ run <- function(k){
   info <- cbind(info,matrix(mean.kappas,nrow=1))
   write.table(info ,file="kappa.csv",append=TRUE,sep=",",row.names=FALSE,col.names=FALSE)
   if(have_prec){
-    msg <- do.call(paste,c(as.list(as.character(precs['mean',])),sep=","))
+    mean.precs <- 
+    if(return_each_fold_kappa)
+      precs["mean",]
+    else
+      precs
+    msg <- do.call(paste,c(as.list(as.character(mean.precs)),sep=","))
     msg <- paste(",precision,",msg,sep="")
     write(msg,file="kappa.csv",append=TRUE)
   }

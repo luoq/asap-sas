@@ -381,7 +381,7 @@ train.cv.glmnet.with.calibrator <- function(X,y,
   model <- list(levels=levels,transformer2=transformer2,fit=fit,s=s,calibrator_type=calibrator_type,calibrator=calibrator,criterion=nb.ctrl$criterion)
   return(list(model=model,kappa=kappa,prec=prec))
 }
-apply.glmnet.with.calibrator <- function(model,X){
+predict.glmnet.with.calibrator <- function(model,X){
   XX <- model$transformer2(X)
   pred <- predict(model$fit,XX,s=model$s)
   if(model$calibrator_type=="nb")
@@ -392,6 +392,7 @@ apply.glmnet.with.calibrator <- function(model,X){
   else if(model$calibrator_type=="pa")
     proportional.assignment(pred,model$calibrator,model$levels)
 }
+apply.glmnet.with.calibrator <- predict.glmnet.with.calibrator
 nbm.all.transformer <- function(X,y,laplace=1e-3,weight.fun=informationGainMultinomial,output.probability=FALSE){
   levels <- as.numeric(levels(as.factor(y)))
   ks <- square.split(ncol(X),100)
@@ -484,4 +485,116 @@ train.cv.glmnet.with.selected.nbms <- function(X,y,
   train.cv.glmnet.with.calibrator(X,y,
                                   transformer1=transformer1,
                                   cv.ctrl=cv.ctrl,glmnet.ctrl=glmnet.ctrl,calibrator_type=calibrator_type)
+}
+train.split.glmnet.with.calibrator <- function(X,y,
+                                               transformer1=function(X,y) list(X=X,y=y,transformer2=identity),
+                                               split.ctrl=list(train.ratio=0.8,split="random",max.measure="kappa"),
+                                               calibrator_type="nb",calibrator.ctrl=list(on.new=FALSE,new.fraction=0.5,refit=TRUE),
+                                               glmnet.ctrl=list(alpha=0.8,nlambda=100,standardize=FALSE),
+                                               nb.ctrl=list(criterion="max.probability")){
+  N <- length(y)
+  omit <- switch(split.ctrl$split,
+                 "random"=sample(N,ceiling(N*(1-split.ctrl$train.ratio))),
+                 "sequential"=rev(seq(N,length=ceiling(N*(1-split.ctrl$train.ratio)),by=-1)))
+  X1 <- X[-omit,,drop=FALSE]
+  y1 <- y[-omit]
+  X2 <- X[omit,,drop=FALSE]
+  y2 <- y[omit]
+  temp <- transformer1(X1,y1)
+  XX1 <- temp$X
+  yy1 <- temp$y
+  transformer2 <- temp$transformer2
+  XX2 <- transformer2(X2)
+  if(calibrator_type=="nb"){
+    if(calibrator.ctrl$on.new){
+      mask <- sample(nrow(XX1),nrow(XX1)*(1-calibrator.ctrl$new.fraction))
+      XX1.1 <- XX1[mask,,drop=FALSE]
+      yy1.1 <- yy1[mask]
+      XX1.2 <- XX1[-mask,,drop=FALSE]
+      yy1.2 <- yy1[-mask]
+      if(calibrator.ctrl$refit){
+        fit <- glmnet(XX1,yy1,nlambda=glmnet.ctrl$nlambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
+        lambda <- fit$lambda
+        fit.1 <- glmnet(XX1.1,yy1.1,lambda=lambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
+      }
+      else{
+        fit.1 <- glmnet(XX1.1,yy1.1,nlambda=glmnet.ctrl$nlambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
+        lambda <- fit.1$lambda
+        fit <- fit.1
+      }
+      nb <- train.multi.NB.normal(predict(fit.1,XX1.2),yy1.2)
+    }
+    else{
+      fit <- glmnet(XX1,yy1,nlambda=glmnet.ctrl$nlambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
+      lambda <- fit$lambda
+      nb <- train.multi.NB.normal(predict(fit,XX1),yy1)
+    }
+  }
+  else{
+    fit <- glmnet(XX1,yy1,nlambda=glmnet.ctrl$nlambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
+    lambda <- fit$lambda
+  }
+  pred <- predict(fit,XX2)
+  if(calibrator_type=="nb"){
+    pred <- if(nb.ctrl$criterion=="min.square.loss")
+      apply.multi.NB.normal(nb,pred,type=nb.ctrl$criterion)
+    else
+      apply.multi.NB.normal(nb,pred)
+  }
+  else if(calibrator_type=="pa"){
+    proportion <- prop.table(table(yy1))
+    pred <- apply(pred,2,function(x) proportional.assignment(x,proportion,levels))
+  }
+  else
+    stop("no such calibrator")
+  measure <- if(split.ctrl$max.measure=="kappa"){
+    apply(pred,2,function(pred)
+          precision(pred,y[omit]))
+  }
+  else if(split.ctrl$max.measure=="precision"){
+    apply(pred,2,function(pred)
+          ScoreQuadraticWeightedKappa(pred,y[omit]))
+  }
+  else
+    stop("no such measure")
+  i <- which.max(measure)
+  s <- lambda[i]
+  calibrator <- switch(calibrator_type,
+                       "nb"={
+                         nb$means=nb$means[,i,drop=FALSE]
+                         nb$vars=nb$vars[,i,drop=FALSE]
+                         nb
+                       },
+                       "pa"=proportion)
+  model <- list(levels=levels,transformer2=transformer2,fit=fit,s=s,calibrator_type=calibrator_type,calibrator=calibrator,criterion=nb.ctrl$criterion)
+  class(model) <- c("glmnet.with.calibrator",class(model))
+  model
+}
+
+Bagging <- function(X,y,train.classifier,B=25,n=length(y)){
+  N <- length(y)
+  temp <- replicate(B,{
+    mask <- sample(N,n,replace=TRUE)
+    classifier <- train.classifier(X[mask,,drop=FALSE],y[mask])
+    pred <- rep(NA,N)
+    pred[-mask] <- predict(classifier,X[-mask,,drop=FALSE])
+    list(classifier=classifier,pred=pred)
+  },simplify=FALSE)
+  classifiers <- lapply(temp,function(x) x$classifier)
+  preds <- sapply(temp,function(x) x$pred)
+
+  levels <- as.numeric(levels(as.factor(y)))
+  counts <- sapply(levels,function(i) rowSums(preds==i,na.rm=TRUE))
+  pred.oob <- levels[apply(counts,1,which.max)]
+  kappa <- ScoreQuadraticWeightedKappa(pred.oob,y)
+  prec <- precision(pred.oob,y)
+  model <- list(levels=levels,classifiers=classifiers)
+  class(model) <- c("Bagging",class(model))
+  list(model=model,kappa=kappa,prec=prec)
+}
+predict.Bagging <- function(model,X){
+  preds <- sapply(model$classifiers,function(f) predict(f,X))
+  levels <- model$levels
+  counts <- sapply(levels,function(i) rowSums(preds==i,na.rm=TRUE))
+  pred <- levels[apply(counts,1,which.max)]
 }
