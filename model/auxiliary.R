@@ -272,7 +272,7 @@ apply.NB.Multinomial <- function(model,X,output.probability=FALSE){
 train.cv.glmnet.with.calibrator <- function(X,y,
                                             transformer1=function(X,y) list(X=X,y=y,transformer2=identity),
                                             cv.ctrl=list(K=10,split="random",max.measure="kappa"),
-                                            calibrator_type="nb",
+                                            calibrator_type="nb",calibrator.ctrl=list(on.new=FALSE,new.fraction=0.5),
                                             glmnet.ctrl=list(alpha=0.8,nlambda=100,standardize=FALSE),
                                             nb.ctrl=list(criterion="max.probability")){
   levels <- as.numeric(levels(as.factor(y)))
@@ -296,24 +296,36 @@ train.cv.glmnet.with.calibrator <- function(X,y,
     omit <- all.folds[[k]]
     X1 <- X[-omit,,drop=FALSE]
     y1 <- y[-omit]
+    X2 <- X[omit,,drop=FALSE]
+    y2 <- y[omit]
     temp <- transformer1(X1,y1)
     XX1 <- temp$X
     yy1 <- temp$y
     transformer2 <- temp$transformer2
-    fit <- glmnet(XX1,yy1,lambda=lambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
-    X2 <- X[omit,,drop=FALSE]
-    y2 <- y[omit]
     XX2 <- transformer2(X2)
+    fit <- glmnet(XX1,yy1,lambda=lambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
+    if(calibrator_type=="nb"){
+      nb <- if(calibrator.ctrl$on.new){
+        mask <- sample(nrow(XX1),nrow(XX1)*(1-calibrator.ctrl$new.fraction))
+        XX1.1 <- XX1[mask,,drop=FALSE]
+        yy1.1 <- yy1[mask]
+        XX1.2 <- XX1[-mask,,drop=FALSE]
+        yy1.2 <- yy1[-mask]
+        fit.1 <- glmnet(XX1.1,yy1.1,lambda=lambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
+        train.multi.NB.normal(predict(fit.1,XX1.2),yy1.2)
+      }
+      else
+        train.multi.NB.normal(predict(fit,XX1),yy1)
+    }
     pred <- predict(fit,XX2)
     if(calibrator_type=="nb"){
-      nb <- train.multi.NB.normal(predict(fit,XX1),yy1)
       pred <- if(nb.ctrl$criterion=="min.square.loss")
         apply.multi.NB.normal(nb,pred,type=nb.ctrl$criterion)
       else
         apply.multi.NB.normal(nb,pred)
     }
     else if(calibrator_type=="pa"){
-      proportion <- prop.table(table(y[-omit]))
+      proportion <- prop.table(table(yy1))
       pred <- apply(pred,2,function(x) proportional.assignment(x,proportion,levels))
     }
     else
@@ -342,7 +354,17 @@ train.cv.glmnet.with.calibrator <- function(X,y,
   names(prec) <- c(sapply(as.character(1:cv.ctrl$K),function(x) paste("fold",x,sep="")),"mean")
 
   calibrator <- if(calibrator_type=="nb")
-    train.multi.NB.normal(predict(fit,XX,s=s),yy)
+    if(calibrator.ctrl$on.new){
+      mask <- sample(nrow(XX),nrow(XX)*(1-calibrator.ctrl$new.fraction))
+      XX.1 <- XX[mask,,drop=FALSE]
+      yy.1 <- yy[mask]
+      XX.2 <- XX[-mask,,drop=FALSE]
+      yy.2 <- yy[-mask]
+      fit.1 <- glmnet(XX.1,yy.1,lambda=lambda,alpha=glmnet.ctrl$alpha,standardize=glmnet.ctrl$standardize,family="gaussian")
+      train.multi.NB.normal(predict(fit.1,XX.2,s=s),yy.2)
+    }
+    else
+      train.multi.NB.normal(predict(fit,XX,s=s),yy)
   else if(calibrator_type=="pa")
     prop.table(table(y))
   else
