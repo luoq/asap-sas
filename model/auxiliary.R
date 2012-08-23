@@ -422,11 +422,11 @@ train.cv.glmnet.with.selected.nbms <- function(X,y,
   transformer1 <- function(X,y){
     if(fit.on.test){
       n <- nrow(X)
-      index <- sample(n,ceiling(n*0.5))
+      index <- sample(n,ceiling(n*0.3))
       X2 <- X[-index,,drop=FALSE]
-      y2 <- y2[-index]
+      y2 <- y[-index]
       X <- X[index,,drop=FALSE]
-      y <- y[-index]
+      y <- y[index]
     }
     nbs <- lapply(1:length(ks),function(i){
       y <- 1*(y<=levels[i])
