@@ -258,7 +258,7 @@ train.cv.NB.Multinomial <- function(X,y,
   model <- list(subset=subset,nb=nb,criterion=nb.ctrl$criterion)
   return(list(model=model,kappa=kappa,prec=prec))
 }
-apply.NB.Multinomial <- function(model,X,output.probability=FALSE){
+predict.NB.Multinomial.with.subset <- function(model,X,output.probability=FALSE){
   X <- X[,model$subset,drop=FALSE]
   if(output.probability)
     predict.NB.Multinomial(model$nb,X,type="probability")
@@ -269,6 +269,7 @@ apply.NB.Multinomial <- function(model,X,output.probability=FALSE){
   else
     stop("No such criterion")
 }
+apply.NB.Multinomial <- predict.NB.Multinomial.with.subset
 train.cv.glmnet.with.calibrator <- function(X,y,
                                             transformer1=function(X,y) list(X=X,y=y,transformer2=identity),
                                             cv.ctrl=list(K=10,split="random",max.measure="kappa"),
@@ -597,4 +598,40 @@ predict.Bagging <- function(model,X){
   levels <- model$levels
   counts <- sapply(levels,function(i) rowSums(preds==i,na.rm=TRUE))
   pred <- levels[apply(counts,1,which.max)]
+}
+train.split.NB.Multinomial <- function(X,y,
+                                       split.ctrl=list(train.ratio=0.8,split="random",max.measure="kappa"),
+                                       nb.ctrl=list(weight.fun=informationGainMultinomial,laplace=1e-3,criterion="max.probability")){
+  N <- length(y)
+  omit <- switch(split.ctrl$split,
+                 "random"=sample(N,ceiling(N*(1-split.ctrl$train.ratio))),
+                 "sequential"=rev(seq(N,length=ceiling(N*(1-split.ctrl$train.ratio)),by=-1)))
+  X1 <- X[-omit,,drop=FALSE]
+  y1 <- y[-omit]
+  X2 <- X[omit,,drop=FALSE]
+  y2 <- y[omit]
+
+  ks <- square.split(ncol(X),100)
+  w <- nb.ctrl$weight.fun(y1,X1)
+  ord <- order(w,decreasing=TRUE)
+  pred <- train.and.predict.multi.NB.Multinomial(X1,y1,X2,ord,ks,
+                                                 laplace=nb.ctrl$laplace,criterion=nb.ctrl$criterion)
+  
+  measure <- if(split.ctrl$max.measure=="kappa"){
+    apply(pred,2,function(pred)
+          precision(pred,y[omit]))
+  }
+  else if(split.ctrl$max.measure=="precision"){
+    apply(pred,2,function(pred)
+          ScoreQuadraticWeightedKappa(pred,y[omit]))
+  }
+  else
+    stop("no such measure")
+  i <- which.max(measure)
+
+  subset <- ord[1:ks[i]]
+  nb <- train.NB.Multinomial(X1[,subset],y1,laplace=nb.ctrl$laplace)
+  model <- list(subset=subset,nb=nb,criterion=nb.ctrl$criterion)
+  class(model) <- c("NB.Multinomial.with.subset",class(model))
+  model
 }
