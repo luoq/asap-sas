@@ -1,4 +1,4 @@
-comment="same as 40,random cv split"
+comment="glmnet on 1-3-gram,bintf,calibrated with NB,no standardize"
 require(Metrics)
 require(glmnet)
 source('general/util.R')
