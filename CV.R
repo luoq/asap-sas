@@ -94,6 +94,8 @@ CV <- function(X,y,K=5,split="random",
     else
       parameter[[i]]
     ret$parameter <- parameter.i
+    ret$best.measure <- measure[,i]
+    ret$best.mean.measure <- mean.measure[,i]
   }
   if(retrain){
     model <-

@@ -2,74 +2,92 @@ require(Metrics)
 require(parallel)
 require(Matrix)
 require(tm)
-return_each_fold_kappa <- TRUE
-run <- function(k){
-  source(paste("model/",as.character(k),".R",sep=""))
+load.results <- function(){
+  data.file <- "model/model.RData"
+  if(!exists("Results")){
+    if(file.exists(data.file))
+      load(data.file)
+    else{
+      Results <<- NULL
+    }
+  }
+}
+save.results <- function()
+  save(Results,file="model/model.RData")
+logging <- function(ID){
+  kappas <- sapply(Results[[ID]]$Assessmen,function(x) x$kappa)
+  kappas <- c(kappas,MeanQuadraticWeightedKappa(kappas))
+  info <- data.frame(id=ID,description=Results[[ID]]$description)
+  info <- cbind(info,matrix(kappas,nrow=1))
+  write.table(info ,file="model/log.txt",append=TRUE,sep=",",row.names=FALSE,col.names=FALSE)
+}
+run <- function(ID,model.assessment=TRUE,train.on.full=TRUE,predict.public=train.on.full){
+  numberOfEssaySet <- length(Set)
+  source(paste("model/",as.character(ID),".R",sep=""))
+  used.feature=used.feature[c("simple","dtm","corpus")]
+  Results[[ID]]$description <<- description
+  Results[[ID]]$used.feature <<- used.feature
+  Results[[ID]]$dtm.feature.ctrl <<- dtm.feature.ctrl
 
-  used_feature=used_feature[c("simple","dtm","corpus")]
-  if(used_feature["dtm"]){
-    ctrl <- dtm_features_ctrl
+  if(used.feature["dtm"]){
+    ctrl <- dtm.feature.ctrl
     for(i in 1:numberOfEssaySet){
-      mask <- (Set[[i]]$ngram>=ctrl$mingram) & (Set[[i]]$ngram<=ctrl$maxgram)
+      mask <- (Set[[i]]$ngram>=dtm.feature.ctrl$mingram) & (Set[[i]]$ngram<=dtm.feature.ctrl$maxgram)
       Set[[i]]$terms <- Set[[i]]$terms[mask]
       Set[[i]]$dtm <- Set[[i]]$dtm[,mask]
-      Set[[i]]$dtm.public <- Set[[i]]$dtm.public[,mask]
-      normalize <- "normalize" %in% names(ctrl) && ctrl$normalize
-      Set[[i]]$dtm <- apply_weight(Set[[i]]$dtm,ctrl$local_weight,ctrl$term_weight,normalize)
-      Set[[i]]$dtm.public <- apply_weight(Set[[i]]$dtm.public,ctrl$local_weight,ctrl$term_weight,normalize)
+      normalize <- "normalize" %in% names(dtm.feature.ctrl) && dtm.feature.ctrl$normalize
+      Set[[i]]$dtm <- apply_weight(Set[[i]]$dtm,dtm.feature.ctrl$local_weight,dtm.feature.ctrl$term_weight,normalize)
+      if(predict.public){
+        Set[[i]]$dtm.public <- Set[[i]]$dtm.public[,mask]
+        Set[[i]]$dtm.public <- apply_weight(Set[[i]]$dtm.public,dtm.feature.ctrl$local_weight,dtm.feature.ctrl$term_weight,normalize)
+      }
     }
-    rm(i,mask,ctrl)
+    rm(i,mask)
   }
 
   name.to.object <- function(x)
     eval.parent(parse(text=x),2)
-  res <- mclapply(1:numberOfEssaySet,function(k){
-    set.seed(84565+k^5)
-    with(Set[[k]], do.call(train.model,lapply(c(list("simple_feature","dtm","corpus")[used_feature],"y"),name.to.object)))
-  })
-  models <- lapply(res,function(x) x$model)
-  kappas <- sapply(res,function(x) x$kappa)
-  have_prec <- "prec" %in% names(res[[1]])
-  if(have_prec)
-    precs <- sapply(res,function(x) x$prec)
-  if(return_each_fold_kappa){
-    colnames(kappas) <- as.character(1:numberOfEssaySet)
-    mean.kappas <- kappas["mean",]
-  }
-  else{
-    names(kappas) <- as.character(1:numberOfEssaySet)
-    mean.kappas <- kappas
-  }
-  mean.kappas <- c(mean.kappas,MeanQuadraticWeightedKappa(mean.kappas))
-  info <- data.frame(id=k,comment=comment)
-  info <- cbind(info,matrix(mean.kappas,nrow=1))
-  write.table(info ,file="kappa.csv",append=TRUE,sep=",",row.names=FALSE,col.names=FALSE)
-  if(have_prec){
-    mean.precs <- 
-    if(return_each_fold_kappa)
-      precs["mean",]
-    else
-      precs
-    msg <- do.call(paste,c(as.list(as.character(mean.precs)),sep=","))
-    msg <- paste(",precision,",msg,sep="")
-    write(msg,file="kappa.csv",append=TRUE)
-  }
+  assess <- function(k){
+    set.seed(27459+k^3)
+    Results[[ID]]$Assessment[[k]] <<- with(Set[[k]],{
+      n <- length(y)
+      mask <- sample(n,floor(n*0.8))
 
-  pred.public <- mclapply(1:numberOfEssaySet,function(k){
-    with(Set[[k]],{
-      pred <- do.call(apply.model,c(list(models[[k]]),lapply(list("simple_feature.public","dtm.public","corpus.public")[used_feature],name.to.object)))
-      data.frame(id=id.public,essay_score=pred)
+      train.result <- do.call(train.model,lapply(c(list("simple_feature[mask,]","dtm[mask,]","corpus[mask]")[used.feature],"y[mask]"),name.to.object))
+      test.result <- do.call(predict,c(list(train.result$model),lapply(list("simple_feature[-mask,]","dtm[-mask,]","corpus[-mask]")[used.feature],name.to.object)))
+      pred <- test.result$class
+      kappa <- ScoreQuadraticWeightedKappa(pred,y[-mask])
+      list(train.result=train.result,test.result,test.result,kappa=kappa)
     })
-  })
-  pred.public <- do.call(rbind,pred.public)
-  pred.public <- pred.public[order(pred.public$id),]
-  write.csv(pred.public,
-            ,file=paste("model/","public",as.character(k),".csv",sep="")
-            ,quote=FALSE,row.names=FALSE)
+  }
+  train.full <- function(k){
+    set.seed(84565+k^5)
+    Results[[ID]]$FullModel[[k]] <<- with(Set[[k]],
+                                          do.call(train.model,lapply(c(list("simple_feature","dtm","corpus")[used.feature],"y"),name.to.object)))
 
-  if(!have_prec)
-    save(models,kappas,comment,pred.public,file=paste("model/",as.character(k),".RData",sep=""))
-  else
-    save(models,kappas,precs,comment,pred.public,file=paste("model/",as.character(k),".RData",sep=""))
-                                        # return(list(models=models,kappas=kappas,pred.public=pred.public))
+  }
+  pred.public <- function(k){
+    Results[[ID]]$PublicPrediction[[k]] <<- Results[[ID]]$public.prediction <<- with(Set[[k]],{
+      res <- do.call(predict,c(list(Results[[ID]]$FullModel[[k]]$model),
+                               lapply(list("simple_feature.public","dtm.public","corpus.public")[used.feature],name.to.object)))
+      data.frame(id=id.public,essay_score=res$class)
+    })}
+  write.public <- function(ID){
+    pred <- do.call(rbind,Results[[ID]]$PublicPrediction)
+    pred <- pred[order(pred$id),]
+    write.csv(pred,
+              ,file=paste("model/",as.character(ID),".public.csv",sep="")
+              ,quote=FALSE,row.names=FALSE)
+  }
+
+  if(model.assessment){
+    mclapply(1:numberOfEssaySet,assess)
+    logging(ID)
+  }
+  if(train.on.full)
+    mclapply(1:numberOfEssaySet,train.full)
+  if(predict.public){
+    mclapply(1:numberOfEssaySet,pred.public)
+    write.public(ID)
+  }
 }

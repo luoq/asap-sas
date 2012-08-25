@@ -22,4 +22,4 @@ Set <- mclapply(1:numberOfEssaySet,function(k){
     dtm.public <- as.Matrix(get_dtm(corpus.public,dictionary=terms,ngram=5))
   })
 })
-save(numberOfEssaySet,Set,file="data.RData")
+save(Set,file="data.RData")
