@@ -68,3 +68,47 @@ predict.NB.normal <- function(model,X){
   }
   return(list(class=class,prob=prob))
 }
+train.NB.Multinomial <- function(X,y,laplace=1e-3,subsets=NULL,ks=NULL,ord=NULL,weight.fun=informationGainMultinomial){
+  y <- as.factor(y)
+  if(is.vector(X))
+    X <- matrix(X,ncol=1)
+  MASK <- t(sapply(levels(y),function(i) y==i)*1)
+  logprior <- log(prop.table(rowSums(MASK)))
+  S <- MASK %*% X
+  if(is.null(subsets)&&is.null(ks)){
+    m <- ncol(X)
+    ps <- as.matrix(Diagonal(x=1/(rowSums(S)+m*laplace)) %*% (S+laplace))
+    Q <- log(ps)
+    model <- list(levels=as.numeric(levels(y)),logprior=logprior,Q=Q)
+    class(model) <- c("NB.Multinomial",class(model))
+    return(model)
+  }
+  else{
+    if(is.null(subsets)){
+      if(is.null(ord)){
+        w <- weight.fun(y,X)
+        ord <- order(w,decreasing=TRUE)
+      }
+      subsets <- lapply(ks,function(k) ord[1:k])
+    }
+    lapply(subsets,function(subset){
+      S <- S[,subset,drop=FALSE]
+      X <- X[,subset,drop=FALSE]
+      m <- ncol(S)
+      ps <- as.matrix(Diagonal(x=1/(rowSums(S)+m*laplace)) %*% (S+laplace))
+      Q <- log(ps)
+      model <- list(levels=as.numeric(levels(y)),logprior=logprior,Q=Q)
+      class(model) <- c("NB.Multinomial",class(model))
+      subset.model(model,subset)
+    })
+  }
+}
+attr(train.NB.Multinomial,"intrinsic_multi_training") <- TRUE
+attr(train.NB.Multinomial,"return_multi_models") <- TRUE
+predict.NB.Multinomial <- function(model,X){
+  L <- X %*% t(model$Q)
+  L <- L+outer(rep(1,nrow(X)),model$logprior)
+  class <- model$levels[apply(L,1,which.max)]
+  prob <- L.to.P(L)
+  return(list(class=class,prob=prob))
+}

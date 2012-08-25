@@ -3,7 +3,6 @@ require(parallel)
 require(Matrix)
 require(tm)
 return_each_fold_kappa <- TRUE
-source("general/feature.R")
 run <- function(k){
   source(paste("model/",as.character(k),".R",sep=""))
 
