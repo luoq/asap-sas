@@ -91,7 +91,7 @@ train.NB.Multinomial <- function(X,y,laplace=1e-3,subsets=NULL,ks=NULL,ord=NULL,
       }
       subsets <- lapply(ks,function(k) ord[1:k])
     }
-    lapply(subsets,function(subset){
+    models <- lapply(subsets,function(subset){
       S <- S[,subset,drop=FALSE]
       X <- X[,subset,drop=FALSE]
       m <- ncol(S)
@@ -101,6 +101,10 @@ train.NB.Multinomial <- function(X,y,laplace=1e-3,subsets=NULL,ks=NULL,ord=NULL,
       class(model) <- c("NB.Multinomial",class(model))
       subset.model(model,subset)
     })
+    if(length(models)==1)
+      return(models[[1]])
+    else
+      return(models)
   }
 }
 attr(train.NB.Multinomial,"intrinsic_multi_training") <- TRUE

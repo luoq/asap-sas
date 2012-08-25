@@ -2,8 +2,12 @@
 ## res <- CV(X,y,train.f=train.NB.Multinomial, parameter=list(ks=square.split(length(y),10)), multi.models=TRUE,intrinsic.multi.training=TRUE)
 ## res <- CV(X,y,train.f=train.NB.Multinomial)
 ##
-CV <- function(X,y,K=5,split="random",measure.fun=c(ScoreQuadraticWeightedKappa,precision),mean.fun=c(mean,MeanQuadraticWeightedKappa),main.measure=1,
-               train.f,parameter=NULL,multi.models=FALSE,intrinsic.multi.training=FALSE,return.multi.models=TRUE){
+CV <- function(X,y,K=5,split="random",
+               measure.fun=c(ScoreQuadraticWeightedKappa,precision),mean.fun=c(mean,MeanQuadraticWeightedKappa),main.measure=1,
+               measure.names=c("kappa","precision"),
+               train.f,parameter=NULL,
+               multi.models=FALSE,intrinsic.multi.training=FALSE,return.multi.models=TRUE,retrain=TRUE){
+  select.model <- multi.models
   n <- length(y)
   all.folds <- if(split=="random")
     all.folds <-cv.kfold.random(n,K)
@@ -56,10 +60,14 @@ CV <- function(X,y,K=5,split="random",measure.fun=c(ScoreQuadraticWeightedKappa,
       class <- res$class
       prob <- res$prob
     }
-    if(!multi.models)
+    if(!multi.models){
+      names(measure) <- measure.names
       measure <- sapply(measure.fun,function(f) f(class,y2))
-    else
+    }
+    else{
       measure <- apply(class,2,function(x) sapply(measure.fun,function(f) f(x,y2)))
+      rownames(measure) <- measure.names
+    }
     list(measure=measure,class=class,prob=prob)
   })
   measure <- sapply(res,function(x) x$measure,simplify="array")
@@ -70,8 +78,42 @@ CV <- function(X,y,K=5,split="random",measure.fun=c(ScoreQuadraticWeightedKappa,
       for(j in 1:d[2])
         mean.measure[i,j] <- mean.fun[[i]](measure[i,j,])
     rm(d)
+    rownames(mean.measure) <- measure.names
   }
-  else
-     mean.measure <- sapply(1:length(measure.fun),function(i) mean.fun[[i]](measure[i,]))
-  return(list(mean.measure=mean.measure,measure=measure,result=res))
+  else{
+    mean.measure <- sapply(1:length(measure.fun),function(i) mean.fun[[i]](measure[i,]))
+    names(mean.measure) <- measure.names
+  }
+  ret <- list(mean.measure=mean.measure,measure=measure,result=res)
+
+  if(select.model){
+    i <- which.max(mean.measure[main.measure,])
+    ret$i <- i
+    parameter.i <- if(intrinsic.multi.training)
+      parameter[[1]][[i]] #assume the first is what matters
+    else
+      parameter[[i]]
+    ret$parameter <- parameter.i
+  }
+  if(retrain){
+    model <-
+      if(!multi.models){
+        if(is.null(parameter))
+          train.f(X,y)
+        else
+          do.call(train.f,c(list(X),list(y),parameter))
+      }
+      else{
+        if(!intrinsic.multi.training)
+          do.call(train.f,c(list(X),list(y),parameter.i))
+        else{
+          parameter.new <- parameter
+          parameter.new[[1]] <- parameter.i #assume the first is what matters
+          do.call(train.f,c(list(X),list(y),parameter.new))
+        }
+      }
+    ret$model <- model
+  }
+
+  return(ret)
 }
