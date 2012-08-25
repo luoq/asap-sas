@@ -22,9 +22,11 @@ run <- function(k){
     rm(i,mask,ctrl)
   }
 
+  name.to.object <- function(x)
+    eval.parent(parse(text=x),2)
   res <- mclapply(1:numberOfEssaySet,function(k){
     set.seed(84565+k^5)
-    with(Set[[k]], do.call(train.model,c(list(simple_feature,dtm,corpus)[used_feature],list(y))))
+    with(Set[[k]], do.call(train.model,lapply(c(list("simple_feature","dtm","corpus")[used_feature],"y"),name.to.object)))
   })
   models <- lapply(res,function(x) x$model)
   kappas <- sapply(res,function(x) x$kappa)
@@ -56,7 +58,7 @@ run <- function(k){
 
   pred.public <- mclapply(1:numberOfEssaySet,function(k){
     with(Set[[k]],{
-      pred <- do.call(apply.model,c(list(models[[k]]),list(simple_feature.public,dtm.public,corpus.public)[used_feature]))
+      pred <- do.call(apply.model,c(list(models[[k]]),lapply(list("simple_feature.public","dtm.public","corpus.public")[used_feature],name.to.object)))
       data.frame(id=id.public,essay_score=pred)
     })
   })

@@ -14,9 +14,9 @@ Set <- mclapply(1:numberOfEssaySet,function(k){
     id.public <- with(public_test_set,Id[EssaySet==k])
     y <- with(train_set,Score1[EssaySet==k])
     
-    simple_feature <- extract.simpleFeatrure(corpus)
-    simple_feature.public <- extract.simpleFeatrure(corpus.public)
-    dtm <- as.Matrix(get_dtm(corpus,ngram=5))
+    # simple_feature <- extract.simpleFeatrure(corpus)
+    # simple_feature.public <- extract.simpleFeatrure(corpus.public)
+    dtm <- as.Matrix(get_dtm(corpus,ngram=3,minDoc=floor(0.005*length(y)),maxDoc=floor(0.80*length(y))))
     terms <- colnames(dtm)
     ngram <- sapply(terms,wordNumber)
     dtm.public <- as.Matrix(get_dtm(corpus.public,dictionary=terms,ngram=5))

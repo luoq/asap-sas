@@ -42,10 +42,11 @@ extract.simpleFeatrure <- function(corpus){
   
   as.data.frame(result)
 }
-get_dtm <- function(corpus,ngram=3,dictionary=NULL){
+get_dtm <- function(corpus,ngram=3,dictionary=NULL,stemming=TRUE,minDoc=4,maxDoc=Inf){
   preprocess_corpus <- function(corpus){
     corpus <- tm_map(corpus,function(x) gsub("[[:punct:]]+", " ", x))
-    corpus <- tm_map(corpus,stemDocument)
+    if(stemming)
+      corpus <- tm_map(corpus,stemDocument)
     corpus
   }
   require(RWeka)
@@ -58,7 +59,7 @@ get_dtm <- function(corpus,ngram=3,dictionary=NULL){
                        stemming=FALSE
                        )
   if(is.null(dictionary))
-    ctrl <- c(default.ctrl,list(bounds=list(global=c(4,Inf))))# about half the terms only belong to one document
+    ctrl <- c(default.ctrl,list(bounds=list(global=c(minDoc,maxDoc))))# about half the terms only belong to one document
   else
     ctrl <- c(default.ctrl,list(dictionary=dictionary))
   DocumentTermMatrix(corpus,control=ctrl)
