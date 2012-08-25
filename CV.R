@@ -2,7 +2,7 @@
 ## res <- CV(X,y,train.f=train.NB.Multinomial, parameter=list(ks=square.split(length(y),10)), multi.models=TRUE,intrinsic.multi.training=TRUE)
 ## res <- CV(X,y,train.f=train.NB.Multinomial)
 ##
-CV <- function(X,y,K=5,split="random",
+CV <- function(X,y,K=10,split="random",
                measure.fun=c(ScoreQuadraticWeightedKappa,precision),mean.fun=c(mean,MeanQuadraticWeightedKappa),main.measure=1,
                measure.names=c("kappa","precision"),
                train.f,parameter=NULL,
@@ -94,7 +94,7 @@ CV <- function(X,y,K=5,split="random",
     else
       parameter[[i]]
     ret$parameter <- parameter.i
-    ret$best.measure <- measure[,i]
+    ret$best.measure <- measure[,i,]
     ret$best.mean.measure <- mean.measure[,i]
   }
   if(retrain){

@@ -49,7 +49,7 @@ run <- function(ID,model.assessment=TRUE,train.on.full=TRUE,predict.public=train
     eval.parent(parse(text=x),2)
   assess <- function(k){
     set.seed(27459+k^3)
-    Results[[ID]]$Assessment[[k]] <<- with(Set[[k]],{
+     with(Set[[k]],{
       n <- length(y)
       mask <- sample(n,floor(n*0.8))
 
@@ -57,17 +57,17 @@ run <- function(ID,model.assessment=TRUE,train.on.full=TRUE,predict.public=train
       test.result <- do.call(predict,c(list(train.result$model),lapply(list("simple_feature[-mask,]","dtm[-mask,]","corpus[-mask]")[used.feature],name.to.object)))
       pred <- test.result$class
       kappa <- ScoreQuadraticWeightedKappa(pred,y[-mask])
-      list(train.result=train.result,test.result,test.result,kappa=kappa)
+      list(train.result=train.result,test.result=test.result,kappa=kappa)
     })
   }
   train.full <- function(k){
     set.seed(84565+k^5)
-    Results[[ID]]$FullModel[[k]] <<- with(Set[[k]],
-                                          do.call(train.model,lapply(c(list("simple_feature","dtm","corpus")[used.feature],"y"),name.to.object)))
+    with(Set[[k]],
+         do.call(train.model,lapply(c(list("simple_feature","dtm","corpus")[used.feature],"y"),name.to.object)))
 
   }
   pred.public <- function(k){
-    Results[[ID]]$PublicPrediction[[k]] <<- Results[[ID]]$public.prediction <<- with(Set[[k]],{
+    with(Set[[k]],{
       res <- do.call(predict,c(list(Results[[ID]]$FullModel[[k]]$model),
                                lapply(list("simple_feature.public","dtm.public","corpus.public")[used.feature],name.to.object)))
       data.frame(id=id.public,essay_score=res$class)
@@ -81,13 +81,13 @@ run <- function(ID,model.assessment=TRUE,train.on.full=TRUE,predict.public=train
   }
 
   if(model.assessment){
-    mclapply(1:numberOfEssaySet,assess)
+    Results[[ID]]$Assessment <- mclapply(1:numberOfEssaySet,assess)
     logging(ID)
   }
   if(train.on.full)
-    mclapply(1:numberOfEssaySet,train.full)
+    Results[[ID]]$FullModel <- mclapply(1:numberOfEssaySet,train.full)
   if(predict.public){
-    mclapply(1:numberOfEssaySet,pred.public)
+    Results[[ID]]$PublicPrediction <- mclapply(1:numberOfEssaySet,pred.public)
     write.public(ID)
   }
 }
