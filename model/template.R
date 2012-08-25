@@ -8,7 +8,7 @@ train.split.f <- function(X,y,
   y1 <- y[-omit]
   X2 <- X[omit,,drop=FALSE]
   y2 <- y[omit]
-  
+
   measure <- if(split.ctrl$max.measure=="kappa"){
     apply(pred,2,function(pred)
           precision(pred,y[omit]))

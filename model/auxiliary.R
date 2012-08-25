@@ -635,3 +635,71 @@ train.split.NB.Multinomial <- function(X,y,
   class(model) <- c("NB.Multinomial.with.subset",class(model))
   model
 }
+train.cv.f <- function(X,y,
+                       train.classifier,parameters,
+                       cv.ctrl=list(K=10,split="random",max.measure="kappa")){
+  n <- length(y)
+  all.folds <- if(cv.ctrl$split=="random")
+    all.folds <-cv.kfold.random(n,cv.ctrl$K)
+  else if(cv.ctrl$split=="sequential")
+    cv.kfold.sequential(n,K)
+  else if(cv.ctrl$split=="stratified")
+    cv.kfold.stratified.random(y,cv.ctrl$K)
+  else
+    stop("no such split method")
+
+  temp <- lapply(1:cv.ctrl$K,function(k){
+    omit <- all.folds[[k]]
+    X1 <- X[-omit,,drop=FALSE]
+    y1 <- y[-omit]
+    X2 <- X[omit,,drop=FALSE]
+    y2 <- y[omit]
+
+    classifiers <- lapply(parameters,function(p) train.classifier(X1,y1,p))
+    pred <- sapply(classifiers,function(x) predict(x,X2))
+
+    prec <- apply(pred,2,function(pred)
+                  precision(pred,y[omit]))
+    kappa <- apply(pred,2,function(pred)
+                   ScoreQuadraticWeightedKappa(pred,y[omit]))
+    list(kappa=kappa,prec=prec)
+  })
+  kappa <- sapply(temp,function(x) x$kappa)
+  prec <- sapply(temp,function(x) x$prec)
+  mean.prec <- apply(prec,1,mean)
+  mean.kappa <- apply(kappa,1,MeanQuadraticWeightedKappa)
+  i <- if(cv.ctrl$max.measure=="kappa")
+    which.max(mean.kappa)
+  else if(cv.ctrl$max.measure=="precision")
+    which.max(mean.prec)
+  else
+    stop("no such measure")
+  parameter <- parameters[[i]]
+  kappa <- c(kappa[i,],mean.kappa[i])
+  prec <- c(prec[i,],mean.prec[i])
+  names(kappa) <- c(sapply(as.character(1:cv.ctrl$K),function(x) paste("fold",x,sep="")),"mean")
+  names(prec) <- c(sapply(as.character(1:cv.ctrl$K),function(x) paste("fold",x,sep="")),"mean")
+  classifier <- train.classifier(X,y,parameter)
+  return(list(model=classifier,kappa=kappa,prec=prec,parameter=parameter))
+}
+train.LiblineaR <- function(X,y,parameter){
+  if(!is.null(parameter$scale)&&parameter$scale)
+    X <- scale(X,center=FALSE)
+  model <- LiblineaR(as.matrix(X),as.factor(y),type=parameter$type,cost=parameter$cost)
+  class(model) <- c("LiblineaR.wrap",class(model))
+  if(!is.null(parameter$scale)&&parameter$scale)
+    attr(model,"scale") <- TRUE
+  model
+}
+predict.factor2numeric.wrap <- function(model,X){
+  orig.class <- class(model)
+  if(!is.null(attr(model,"scale"))&&attr(model,"scale"))
+    X <- scale(X,center=FALSE)
+  class(model) <- orig.class[2:length(orig.class)]
+  factor2numeric(predict(model,X))
+}
+predict.LiblineaR.wrap <- function(model,X){
+  orig.class <- class(model)
+  class(model) <- orig.class[2:length(orig.class)]
+  as.numeric(predict(model,as.matrix(X))$predictions)
+}

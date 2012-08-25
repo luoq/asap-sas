@@ -200,3 +200,13 @@ nspace <- function(x){
 }
 precision <- function(x,y)
   sum(x==y)/length(x)
+df.to.list.of.list <- function(x)
+  do.call(function(...) mapply(list,...,SIMPLIFY=FALSE),lapply(x,identity))
+list.of.list.to.df <- function(x){
+  res <- lapply(1:length(x[[1]]),function(i) sapply(x,function(x) x[[i]]))
+  names(res) <- names(x[[1]])
+  do.call(function(...) data.frame(...,stringsAsFactors=FALSE),res)
+}
+direct.prod <- function(...){
+  df.to.list.of.list(expand.grid(...,stringsAsFactors=FALSE))
+}
