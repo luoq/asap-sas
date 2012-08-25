@@ -107,12 +107,23 @@ train.NB.Multinomial <- function(X,y,laplace=1e-3,subsets=NULL,ks=NULL,ord=NULL,
       return(models)
   }
 }
-attr(train.NB.Multinomial,"intrinsic_multi_training") <- TRUE
-attr(train.NB.Multinomial,"return_multi_models") <- TRUE
 predict.NB.Multinomial <- function(model,X){
   L <- X %*% t(model$Q)
   L <- L+outer(rep(1,nrow(X)),model$logprior)
   class <- model$levels[apply(L,1,which.max)]
   prob <- L.to.P(L)
   return(list(class=class,prob=prob))
+}
+# Example: res <- CV.NB.Multinomial.Best.K(X,y,ks=seq(10,1000,by=10))
+CV.NB.Multinomial.Best.K <- function(X,y,weight.fun=informationGainMultinomial,ks=NULL,cv.ctrl=NULL){
+  if(is.character(weight.fun) && weight.fun=="informationGain2")
+    weight.fun <- function(y,X) informationGain2(y,1*(X!=0))
+  if(is.null(ks))
+    do.call(CV,c(list(X=X,y=y,
+                      train.f=function(X,y) train.NB.Multinomial(X,y,weight.fun=weight.fun)),
+                      ,cv.ctrl))
+  else
+    do.call(CV,c(list(X=X,y=y,
+                      train.f=function(X,y,ks) train.NB.Multinomial(X,y,weight.fun=weight.fun,ks=ks),parameter=list(ks=ks),
+                      multi.models=TRUE,intrinsic.multi.training=TRUE),cv.ctrl))
 }
