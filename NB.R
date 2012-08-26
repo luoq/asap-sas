@@ -186,3 +186,4 @@ CV.NB.Bernoulli.Best.K <- function(X,y,weight.fun=informationGain2,ks=NULL,cv.ct
                       train.f=function(X,y,ks) train.NB.Bernoulli(X,y,weight.fun=weight.fun,ks=ks),parameter=list(ks=ks),
                       multi.model=TRUE,intrinsic.multi.training=TRUE),cv.ctrl))
 }
+CV.NB.Bernoulli.Best.K.2 <- prebinarizer(CV.NB.Bernoulli.Best.K)

@@ -11,7 +11,6 @@ logging <- function(ID){
   info <- cbind(info,matrix(kappas,nrow=1))
   write.table(info ,file="model/log.txt",append=TRUE,sep=",",row.names=FALSE,col.names=FALSE)
 }
-report.all <- function() sapply(1:length(Results),function(i) report(i))
 seed1 <- function(k) 27459+k^3
 test.mask <- function(k){
   set.seed(seed1(k))
@@ -21,7 +20,7 @@ test.mask <- function(k){
 }
 pred.table <- function(k){
   pred <- sapply(1:length(Results),function(id)
-         Results[[id]]$Assessment[[k]]$test.result$class)
+                 Results[[id]]$Assessment[[k]]$test.result$class)
   colnames(pred) <- sapply(as.character(1:length(Results)),function(x) paste("p",x,sep=""))
   y <- Y.test[[k]]
   count <- correct.count(pred,y)
@@ -32,7 +31,19 @@ pred.table <- function(k){
 }
 get.ture.y.on.test.set <- function()
   lapply(1:length(Set),function(k) Set[[k]]$y[test.mask(k)])
-report <- function(ID){
+report <- function(ID=NULL){
+  cat("\n")
+  if(is.null(ID))
+    ID <- length(Results)
+  if(length(ID)==1 && ID==0)
+    ID <- 1:length(Results)
+  sapply(ID,function(i) {
+    report.1(i)
+    cat("\n")
+    1
+  })
+}
+report.1 <- function(ID){
   add.mean <- function(x){
     mean <- apply(x,1,MeanQuadraticWeightedKappa)
     cbind(x,mean)

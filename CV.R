@@ -135,7 +135,13 @@ CV <- function(X,y,K=10,split="random",
 }
 aggregate.CV.result <- function(x,what="class"){
   index <- c(x$all.folds,recursive=TRUE)
-  data <- do.call(rbind,lapply(x$result,function(x) x[[what]]))
+  location <- if(is.null(x$best.result)) "result" else "best.result"
+  data <- do.call(rbind,lapply(x[[location]],function(x) {
+    res <- x[[what]]
+    if(is.vector(res))
+      res <- matrix(res,ncol=1)
+    res
+  }))
   data[index,] <- data
   rownames(data)[index] <- rownames(data)
   data

@@ -19,3 +19,22 @@ predict.calibrator.model <- function(model,X){
   base.pred <- predict(model$base,X)[[model$calibrate.on]]
   predict(model$calibrator,base.pred)
 }
+preprocess.wrap <- function(f,p){
+  function(X,y,...){
+    X <- p(X)
+    res <- f(X,y,...)
+    if(!is.null(res$model))
+      res$model <- preprocess.model(res$model,p)
+    res
+  }
+}
+preprocess.model <- function(x,p){
+  res <- list(model=x,p=p)
+  class(res) <- c("preprocess.model",list)
+  res
+}
+predict.preprocess.model <- function(model,X){
+  X <- model$p(X)
+  predict(model$model,X)
+}
+prebinarizer <- function(f) preprocess.wrap(f,binarizer)

@@ -218,3 +218,4 @@ majority <- function(X,levels=NULL){
     as.numeric(names(tab)[which.max(tab)])
   })
 }
+binarizer <- function(X) 1*(X!=0)

@@ -70,3 +70,4 @@ CV.Glmnet.with.NB.CV <- function(X,y,nlambda=100,glmnet.ctrl=list(alpha=0.8,stan
   res$model <- model
   res
 }
+CV.Glmnet.with.NB.2 <- prebinarizer(CV.Glmnet.with.NB)
