@@ -6,7 +6,8 @@ CV <- function(X,y,K=10,split="random",
                measure.fun=c(ScoreQuadraticWeightedKappa,precision),mean.fun=c(mean,MeanQuadraticWeightedKappa),main.measure=1,
                measure.names=c("kappa","precision"),
                train.f,parameter=NULL,
-               multi.models=FALSE,select.model=multi.models,intrinsic.multi.training=FALSE,return.multi.models=TRUE,retrain=TRUE){
+               multi.models=FALSE,select.model=multi.models,intrinsic.multi.training=FALSE,return.multi.models=TRUE,retrain=TRUE,
+               return.result=!multi.models,return.best.result=multi.models){
   n <- length(y)
   all.folds <- if(split=="random")
     all.folds <-cv.kfold.random(n,K)
@@ -31,7 +32,8 @@ CV <- function(X,y,K=10,split="random",
           fs <- lapply(parameter,function(p) do.call(train.f,c(list(X1),list(y1),p)))
         res <- lapply(fs,function(f) predict(f,X2))
         class <- sapply(res,function(x) x$class)
-        prob <- NULL #not need this
+        prob <- sapply(res,function(x) x$prob,simplify="array")
+        prob <- aperm(prob,c(1,3,2))
       }
       else{
         if(is.null(parameter))
@@ -41,12 +43,13 @@ CV <- function(X,y,K=10,split="random",
         if(!return.multi.models){
           res <- predict(f,X2)
           class <- res$class
-          prob <- NULL
+          prob <- res$prob
         }
         else{
           res <- lapply(f,function(f) predict(f,X2))
           class <- sapply(res,function(x) x$class)
-          prob <- NULL #not need this
+          prob <- sapply(res,function(x) x$prob,simplify="array")
+          prob <- aperm(prob,c(1,3,2))
         }
       }
     }
@@ -59,17 +62,21 @@ CV <- function(X,y,K=10,split="random",
       class <- res$class
       prob <- res$prob
     }
+    list(class=class,prob=prob)
+  })
+  measure <- sapply(1:K,function(i) with(res[[i]],{
+    y <- y[all.folds[[i]]]
     if(!multi.models){
+      measure <- sapply(measure.fun,function(f) f(class,y))
       names(measure) <- measure.names
-      measure <- sapply(measure.fun,function(f) f(class,y2))
     }
     else{
-      measure <- apply(class,2,function(x) sapply(measure.fun,function(f) f(x,y2)))
+      measure <- apply(class,2,function(x) sapply(measure.fun,function(f) f(x,y)))
       rownames(measure) <- measure.names
     }
-    list(measure=measure,class=class,prob=prob)
-  })
-  measure <- sapply(res,function(x) x$measure,simplify="array")
+    measure
+  }),
+                    simplify="array")
   if(multi.models){
     d <- dim(measure)
     mean.measure <- array(dim=d[1:2])
@@ -83,7 +90,9 @@ CV <- function(X,y,K=10,split="random",
     mean.measure <- sapply(1:length(measure.fun),function(i) mean.fun[[i]](measure[i,]))
     names(mean.measure) <- measure.names
   }
-  ret <- list(mean.measure=mean.measure,measure=measure,result=res)
+  ret <- list(all.folds=all.folds,mean.measure=mean.measure,measure=measure)
+  if(return.result)
+    ret$result <- res
 
   if(select.model){
     i <- which.max(mean.measure[main.measure,])
@@ -95,6 +104,8 @@ CV <- function(X,y,K=10,split="random",
     ret$best.parameter <- parameter.i
     ret$best.measure <- measure[,i,]
     ret$best.mean.measure <- mean.measure[,i]
+    if(return.best.result)
+      ret$best.result <- lapply(res,function(x) with(x,list(class=class[,i],prob=prob[,i,])))
   }
   if(retrain){
     model <-
@@ -115,7 +126,7 @@ CV <- function(X,y,K=10,split="random",
       }
     ret$model <- model
   }
-  
+
   class(ret) <- c("CV.result",class(ret))
   return(ret)
 }
