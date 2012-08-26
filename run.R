@@ -11,6 +11,7 @@ logging <- function(ID){
   info <- cbind(info,matrix(kappas,nrow=1))
   write.table(info ,file="model/log.txt",append=TRUE,sep=",",row.names=FALSE,col.names=FALSE)
 }
+report.all <- function() sapply(1:length(Results),function(i) report(i))
 report <- function(ID){
   add.mean <- function(x){
     mean <- apply(x,1,MeanQuadraticWeightedKappa)

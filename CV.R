@@ -3,7 +3,7 @@
 ## res <- CV(X,y,train.f=train.NB.Multinomial)
 ##
 CV <- function(X,y,K=10,split="random",
-               measure.fun=c(ScoreQuadraticWeightedKappa,precision),mean.fun=c(mean,MeanQuadraticWeightedKappa),main.measure=1,
+               measure.fun=c(ScoreQuadraticWeightedKappa,precision),mean.fun=c(MeanQuadraticWeightedKappa,mean),main.measure=1,
                measure.names=c("kappa","precision"),
                train.f,parameter=NULL,
                multi.models=FALSE,select.model=multi.models,intrinsic.multi.training=FALSE,return.multi.models=TRUE,retrain=TRUE,
