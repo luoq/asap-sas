@@ -131,9 +131,8 @@ run <- function(ID,train.on.full=FALSE,model.assessment=!train.on.full,debug=FAL
     Results[[ID]]$Assessment <<- mclapply(1:numberOfEssaySet,assess)
     logging(ID)
   }
-  if(train.on.full)
-    Results[[ID]]$FullModel <<- mclapply(1:numberOfEssaySet,train.full)
   if(train.on.full){
+    Results[[ID]]$FullModel <<- mclapply(1:numberOfEssaySet,train.full)
     Results[[ID]]$PublicPrediction <<- mclapply(1:numberOfEssaySet,pred.public)
     write.public(ID)
   }
