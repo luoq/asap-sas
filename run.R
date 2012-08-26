@@ -138,3 +138,12 @@ run <- function(ID,train.on.full=FALSE,model.assessment=!train.on.full,debug=FAL
   }
   save.results()
 }
+load.test.example <- function(k){
+  X <<- Set[[k]]$dtm[1:500,]
+  mask <- colSums(X)>0
+  X <<- X[,mask]
+  y <<- Set[[k]]$y[1:500]
+  X1 <<- Set[[k]]$dtm[600:800,]
+  X1 <<- X1[,mask]
+  y1 <<- Set[[k]]$y[600:800]
+}
