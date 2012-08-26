@@ -210,3 +210,5 @@ list.of.list.to.df <- function(x){
 direct.prod <- function(...){
   df.to.list.of.list(expand.grid(...,stringsAsFactors=FALSE))
 }
+correct.count <- function(X,y)
+  rowSums(X==outer(y,rep(1,ncol(X))))

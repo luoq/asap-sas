@@ -1,7 +1,5 @@
 require(tm)
 require(parallel)
-source("general/util.R")
-source("general/feature.R")
 train_set <- read.delim("../data/train_rel_2.tsv",stringsAsFactors=FALSE)
 public_test_set <- read.delim("../data/public_leaderboard_rel_2.tsv",stringsAsFactors=FALSE)
 numberOfEssaySet <- 10
@@ -9,6 +7,7 @@ Set=vector(mode="list",length=numberOfEssaySet)
 Set <- mclapply(1:numberOfEssaySet,function(k){
   within(list(),{
     essay_set <- k
+    id <- with(train_set,Id[EssaySet==k])
     corpus <- Corpus(VectorSource(with(train_set,EssayText[EssaySet==k])))
     corpus.public <- Corpus(VectorSource(with(public_test_set,EssayText[EssaySet==k])))
     id.public <- with(public_test_set,Id[EssaySet==k])

@@ -3,7 +3,7 @@ require(parallel)
 require(Matrix)
 require(tm)
 save.results <- function()
-  save(Results,file="model/model.RData")
+  save(Results,Y.test,file='model/model.RData')
 logging <- function(ID){
   kappas <- sapply(Results[[ID]]$Assessmen,function(x) x$kappa)
   kappas <- c(kappas,MeanQuadraticWeightedKappa(kappas))
@@ -12,6 +12,25 @@ logging <- function(ID){
   write.table(info ,file="model/log.txt",append=TRUE,sep=",",row.names=FALSE,col.names=FALSE)
 }
 report.all <- function() sapply(1:length(Results),function(i) report(i))
+seed1 <- function(k) 27459+k^3
+test.mask <- function(k){
+  set.seed(seed1(k))
+  n <- length(Set[[k]]$y)
+  mask <- sample(n,floor(n*0.8))
+  -mask
+}
+prediction.table <- function(k){
+  pred <- sapply(1:length(Results),function(id)
+         Results[[id]]$Assessment[[k]]$test.result$class)
+  y <- Y.test[[k]]
+  count <- correct.count(pred,y)
+  data <- cbind(pred,y,count)
+  colnames(data) <- c(sapply(as.character(1:length(Results)),function(x) paste("p",x,sep="")),"t","c")
+  rownames(data) <- Set[[k]]$id[test.mask(k)]
+  as.data.frame(data)
+}
+get.ture.y.on.test.set <- function()
+  lapply(1:length(Set),function(k) Set[[k]]$y[test.mask(k)])
 report <- function(ID){
   add.mean <- function(x){
     mean <- apply(x,1,MeanQuadraticWeightedKappa)
@@ -73,7 +92,7 @@ run <- function(ID,train.on.full=FALSE,model.assessment=!train.on.full,predict.p
   name.to.object <- function(x)
     eval.parent(parse(text=x),2)
   assess <- function(k){
-    set.seed(27459+k^3)
+    set.seed(seed1(k))
     with(Set[[k]],{
       n <- length(y)
       mask <- sample(n,floor(n*0.8))
