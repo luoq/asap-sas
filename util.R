@@ -212,3 +212,9 @@ direct.prod <- function(...){
 }
 correct.count <- function(X,y)
   rowSums(X==outer(y,rep(1,ncol(X))))
+majority <- function(X,levels=NULL){
+  apply(X,1,function(x){
+    tab <- table(x)
+    as.numeric(names(tab)[which.max(tab)])
+  })
+}

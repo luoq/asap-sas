@@ -19,13 +19,14 @@ test.mask <- function(k){
   mask <- sample(n,floor(n*0.8))
   -mask
 }
-prediction.table <- function(k){
+pred.table <- function(k){
   pred <- sapply(1:length(Results),function(id)
          Results[[id]]$Assessment[[k]]$test.result$class)
+  colnames(pred) <- sapply(as.character(1:length(Results)),function(x) paste("p",x,sep=""))
   y <- Y.test[[k]]
   count <- correct.count(pred,y)
-  data <- cbind(pred,y,count)
-  colnames(data) <- c(sapply(as.character(1:length(Results)),function(x) paste("p",x,sep="")),"t","c")
+  most <- majority(pred)
+  data <- cbind(pred,y=y,c=count,m=most)
   rownames(data) <- Set[[k]]$id[test.mask(k)]
   as.data.frame(data)
 }
