@@ -51,11 +51,18 @@ predict.NB.normal <- function(model,X){
     else
       L <- calc.conditional.normal.dist(model,X)
     class <- apply(L,c(1,2),which.max)
-    if(ncol(class)==1)
+    class <- if(ncol(class)==1)
       model$levels[class]
     else
       matrix(model$levels[class],nrow=nrow(class))
-    prob <- NULL ## this will not be used
+    
+    d <- dim(L)
+    prob <- L
+    dim(prob) <- c(d[1]*d[2],d[3])
+    prob <- L.to.P(prob)
+    dim(prob) <- d
+    if(d[2]==1)
+      dim(prob) <- c(d[1],d[3])
   }
   else{
     L <- calc.conditional.normal.dist(model,X)

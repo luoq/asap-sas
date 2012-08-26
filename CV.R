@@ -87,12 +87,12 @@ CV <- function(X,y,K=10,split="random",
 
   if(select.model){
     i <- which.max(mean.measure[main.measure,])
-    ret$i <- i
+    ret$best.index <- i
     parameter.i <- if(intrinsic.multi.training)
       parameter[[1]][[i]] #assume the first is what matters
     else
       parameter[[i]]
-    ret$parameter <- parameter.i
+    ret$best.parameter <- parameter.i
     ret$best.measure <- measure[,i,]
     ret$best.mean.measure <- mean.measure[,i]
   }
