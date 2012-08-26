@@ -70,7 +70,7 @@ predict.NB.normal <- function(model,X){
     if(model$add.prior)
       L <- L+outer(rep(1,nrow(X)),model$logprior)
     class <- apply(L,1,which.max)
-    model$levels[class]
+    class <- model$levels[class]
     prob <- L.to.P(L)
   }
   return(list(class=class,prob=prob))
