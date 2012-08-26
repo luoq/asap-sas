@@ -127,3 +127,55 @@ CV.NB.Multinomial.Best.K <- function(X,y,weight.fun=informationGainMultinomial,k
                       train.f=function(X,y,ks) train.NB.Multinomial(X,y,weight.fun=weight.fun,ks=ks),parameter=list(ks=ks),
                       multi.models=TRUE,intrinsic.multi.training=TRUE),cv.ctrl))
 }
+train.NB.Bernoulli <- function(X,y,laplace=1e-3,subsets=NULL,ks=NULL,ord=NULL,weight.fun=informationGain2){
+  y <- as.factor(y)
+  if(is.vector(X))
+    X <- matrix(X,ncol=1)
+  MASK <- t(sapply(levels(y),function(i) y==i)*1)
+  ns <- rowSums(MASK)
+  logprior <- log(prop.table(ns))
+  S <- MASK %*% X
+  ps <- as.matrix(Diagonal(x=1/(ns+2*laplace)) %*% (S+laplace))
+  Q <- t(log(ps)-log(1-ps))
+  if(is.null(subsets)&&is.null(ks)){
+    model <- list(levels=as.numeric(levels(y)),logprior=logprior,Q=Q)
+    class(model) <- c("NB.Bernoulli",class(model))
+    return(model)
+  }
+  else{
+    if(is.null(subsets)){
+      if(is.null(ord)){
+        w <- weight.fun(y,X)
+        ord <- order(w,decreasing=TRUE)
+      }
+      subsets <- lapply(ks,function(k) ord[1:k])
+    }
+    models <- lapply(subsets,function(subset){
+      Q <- Q[subset,,drop=FALSE]
+      model <- list(levels=as.numeric(levels(y)),logprior=logprior,Q=Q)
+      class(model) <- c("NB.Bernoulli",class(model))
+      subset.model(model,subset)
+    })
+    if(length(models)==1)
+      return(models[[1]])
+    else
+      return(models)
+  }
+}
+predict.NB.Bernoulli <- function(model,X){
+  L <- X %*% model$Q
+  L <- L+outer(rep(1,nrow(X)),model$logprior)
+  class <- model$levels[apply(L,1,which.max)]
+  prob <- L.to.P(L)
+  return(list(class=class,prob=prob))
+}
+CV.NB.Bernoulli.Best.K <- function(X,y,weight.fun=informationGain2,ks=NULL,cv.ctrl=NULL){
+  if(is.null(ks))
+    do.call(CV,c(list(X=X,y=y,
+                      train.f=function(X,y) train.NB.Bernoulli(X,y,weight.fun=weight.fun)),
+                      ,cv.ctrl))
+  else
+    do.call(CV,c(list(X=X,y=y,
+                      train.f=function(X,y,ks) train.NB.Bernoulli(X,y,weight.fun=weight.fun,ks=ks),parameter=list(ks=ks),
+                      multi.models=TRUE,intrinsic.multi.training=TRUE),cv.ctrl))
+}

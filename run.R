@@ -11,7 +11,7 @@ logging <- function(ID){
   info <- cbind(info,matrix(kappas,nrow=1))
   write.table(info ,file="model/log.txt",append=TRUE,sep=",",row.names=FALSE,col.names=FALSE)
 }
-run <- function(ID,model.assessment=TRUE,train.on.full=FALSE,predict.public=train.on.full){
+run <- function(ID,train.on.full=FALSE,model.assessment=!train.on.full,predict.public=train.on.full){
   numberOfEssaySet <- length(Set)
   source(paste("model/",as.character(ID),".R",sep=""))
   used.feature=used.feature[c("simple","dtm","corpus")]
@@ -72,10 +72,12 @@ run <- function(ID,model.assessment=TRUE,train.on.full=FALSE,predict.public=trai
               ,quote=FALSE,row.names=FALSE)
   }
 
+  browser()
   if(model.assessment){
     Results[[ID]]$Assessment <<- mclapply(1:numberOfEssaySet,assess)
     logging(ID)
   }
+  browser()
   if(train.on.full)
     Results[[ID]]$FullModel <<- mclapply(1:numberOfEssaySet,train.full)
   if(predict.public){
