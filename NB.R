@@ -132,7 +132,7 @@ CV.NB.Multinomial.Best.K <- function(X,y,weight.fun=informationGainMultinomial,k
   else
     do.call(CV,c(list(X=X,y=y,
                       train.f=function(X,y,ks) train.NB.Multinomial(X,y,weight.fun=weight.fun,ks=ks),parameter=list(ks=ks),
-                      multi.models=TRUE,intrinsic.multi.training=TRUE),cv.ctrl))
+                      multi.model=TRUE,intrinsic.multi.training=TRUE),cv.ctrl))
 }
 train.NB.Bernoulli <- function(X,y,laplace=1e-3,subsets=NULL,ks=NULL,ord=NULL,weight.fun=informationGain2){
   y <- as.factor(y)
@@ -184,5 +184,5 @@ CV.NB.Bernoulli.Best.K <- function(X,y,weight.fun=informationGain2,ks=NULL,cv.ct
   else
     do.call(CV,c(list(X=X,y=y,
                       train.f=function(X,y,ks) train.NB.Bernoulli(X,y,weight.fun=weight.fun,ks=ks),parameter=list(ks=ks),
-                      multi.models=TRUE,intrinsic.multi.training=TRUE),cv.ctrl))
+                      multi.model=TRUE,intrinsic.multi.training=TRUE),cv.ctrl))
 }

@@ -7,7 +7,7 @@ train.Glmnet <- function(X,y,s=NULL,...){
 }
 predict.Glmnet <- function(model,X){
   pred <- predict(model$glmnet,s=model$s,X)
-  return(list(value=pred))
+  return(list(class=pred))
 }
 train.Glmnet.with.NB <- function(X,y,glmnet.ctrl=NULL)
   train.calibrator.model(X,y,
@@ -20,15 +20,48 @@ CV.Glmnet.with.NB <- function(X,y,nlambda=100,glmnet.ctrl=list(alpha=0.8,standar
   res <- do.call(CV,c(list(X,y,
                            train.f=function(X,y,s) train.Glmnet.with.NB(X,y,glmnet.ctrl=c(list(s=s,lambda=lambda),glmnet.ctrl)),
                            parameter=list(s=lambda),
-                           multi.models=TRUE,intrinsic.multi.training=TRUE,select.model=TRUE,return.multi.models=FALSE,retrain=FALSE),
+                           multi.model=TRUE,intrinsic.multi.training=TRUE,select.model=TRUE,return.multi.model=FALSE,retrain=FALSE),
                       cv.ctrl))
   s <- res$best.parameter
   base.model <- list(glmnet=fit,s=s)
   class(base.model) <- list("Glmnet","list")
   base.pred <- predict(fit,X,s=s)
   calibrator <- train.NB.normal(base.pred,y)
-  model <- list(base=base.model,calibrator=calibrator,calibrate.on="value")
+  model <- list(base=base.model,calibrator=calibrator,calibrate.on="class")
   class(model) <- list("calibrator.model","list")
+  res$model <- model
+  res
+}
+train.Glmnet.with.NB.CV <- function(X,y,train.base=TRUE,glmnet.ctrl=list(alpha=0.8,standardize=FALSE),cv.ctrl=list(K=5,split="random")){
+  res <- do.call(CV,c(list(X,y,
+                           train.f=function(X,y) do.call(train.Glmnet,c(list(X,y),glmnet.ctrl)),
+                           parameter=NULL,measure.fun=NULL,return.result=TRUE,
+                           multi.model=TRUE,intrinsic.multi.training=TRUE,select.model=FALSE,return.multi.model=FALSE,retrain=train.base),
+                      cv.ctrl))
+  if(train.base)
+    base <- res$model
+  else
+    base <- NULL
+  base.pred <- aggregate.CV.result(res)
+  calibrator <-train.NB.normal(base.pred,y,multi.model=TRUE)
+  model <- list(base=base,calibrator=calibrator,calibrate.on="class")
+  class(model) <- list("calibrator.model","list")
+  model
+}
+CV.Glmnet.with.NB.CV <- function(X,y,nlambda=100,glmnet.ctrl=list(alpha=0.8,standardize=FALSE),
+                                 cv.ctrl=list(K=10)){
+  base.model <- do.call(train.Glmnet,c(list(X,y,nlambda=nlambda),glmnet.ctrl))
+  lambda <- base.model$glmnet$lambda
+  res <- do.call(CV,c(list(X,y,
+                           train.f=function(X,y,s) train.Glmnet.with.NB.CV(X,y,glmnet.ctrl=c(list(s=s,lambda=lambda),glmnet.ctrl)),
+                           parameter=list(s=lambda),
+                           multi.model=TRUE,intrinsic.multi.training=TRUE,select.model=TRUE,return.multi.model=FALSE,retrain=FALSE),
+                      cv.ctrl))
+  s <- res$best.parameter
+  base.model$s <- s
+
+  model <- train.Glmnet.with.NB.CV(X,y,train.base=FALSE,glmnet.ctrl=c(list(s=s,lambda=lambda),glmnet.ctrl))
+  model$base <- base.model
   res$model <- model
   res
 }

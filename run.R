@@ -64,7 +64,9 @@ report <- function(ID){
   print(format(res,digits=3))
   "-"
 }
-run <- function(ID,train.on.full=FALSE,model.assessment=!train.on.full,predict.public=train.on.full){
+run <- function(ID,train.on.full=FALSE,model.assessment=!train.on.full,debug=FALSE) {
+  if(debug)
+    mclapply <- lapply
   numberOfEssaySet <- length(Set)
   source(paste("model/",as.character(ID),".R",sep=""))
   used.feature=used.feature[c("simple","dtm","corpus")]
@@ -82,7 +84,7 @@ run <- function(ID,train.on.full=FALSE,model.assessment=!train.on.full,predict.p
       Set[[i]]$dtm <- Set[[i]]$dtm[,mask]
       normalize <- "normalize" %in% names(dtm.feature.ctrl) && dtm.feature.ctrl$normalize
       Set[[i]]$dtm <- apply_weight(Set[[i]]$dtm,dtm.feature.ctrl$local_weight,dtm.feature.ctrl$term_weight,normalize)
-      if(predict.public){
+      if(train.on.full){
         Set[[i]]$dtm.public <- Set[[i]]$dtm.public[,mask]
         Set[[i]]$dtm.public <- apply_weight(Set[[i]]$dtm.public,dtm.feature.ctrl$local_weight,dtm.feature.ctrl$term_weight,normalize)
       }
@@ -131,7 +133,7 @@ run <- function(ID,train.on.full=FALSE,model.assessment=!train.on.full,predict.p
   }
   if(train.on.full)
     Results[[ID]]$FullModel <<- mclapply(1:numberOfEssaySet,train.full)
-  if(predict.public){
+  if(train.on.full){
     Results[[ID]]$PublicPrediction <<- mclapply(1:numberOfEssaySet,pred.public)
     write.public(ID)
   }

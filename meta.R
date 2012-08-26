@@ -7,7 +7,7 @@ predict.subset.model <- function(model,X){
   X <- X[,model$subset,drop=FALSE]
   predict(model$model,X)
 }
-train.calibrator.model <- function(X,y,train.base,train.calibrator,calibrate.on="value"){
+train.calibrator.model <- function(X,y,train.base,train.calibrator,calibrate.on="class"){
   base.model <- train.base(X,y)
   base.pred <- predict(base.model,X)[[calibrate.on]]
   calibrator <- train.calibrator(base.pred,y)
