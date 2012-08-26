@@ -6,8 +6,7 @@ CV <- function(X,y,K=10,split="random",
                measure.fun=c(ScoreQuadraticWeightedKappa,precision),mean.fun=c(mean,MeanQuadraticWeightedKappa),main.measure=1,
                measure.names=c("kappa","precision"),
                train.f,parameter=NULL,
-               multi.models=FALSE,intrinsic.multi.training=FALSE,return.multi.models=TRUE,retrain=TRUE){
-  select.model <- multi.models
+               multi.models=FALSE,select.model=multi.models,intrinsic.multi.training=FALSE,return.multi.models=TRUE,retrain=TRUE){
   n <- length(y)
   all.folds <- if(split=="random")
     all.folds <-cv.kfold.random(n,K)
@@ -116,6 +115,7 @@ CV <- function(X,y,K=10,split="random",
       }
     ret$model <- model
   }
-
+  
+  class(ret) <- c("CV.result",class(ret))
   return(ret)
 }

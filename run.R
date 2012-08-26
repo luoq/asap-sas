@@ -11,6 +11,38 @@ logging <- function(ID){
   info <- cbind(info,matrix(kappas,nrow=1))
   write.table(info ,file="model/log.txt",append=TRUE,sep=",",row.names=FALSE,col.names=FALSE)
 }
+report <- function(ID){
+  add.mean <- function(x){
+    mean <- apply(x,1,MeanQuadraticWeightedKappa)
+    cbind(x,mean)
+  }
+  if(ID>length(Results))
+    stop("No such result")
+  cat(sprintf("Model %d\n",ID))
+  cat(sprintf("%s\n",Results[[ID]]$description))
+
+  res <- data.frame()
+  if(!is.null(Results[[ID]]$Assessment)){
+    test <- sapply(Results[[ID]]$Assessment,function(x) x$kappa)
+    res <- rbind(res,test=test)
+    if("CV.result" %in% class(Results[[ID]]$Assessment[[1]]$train.result) &&
+       !is.null(Results[[ID]]$Assessment[[1]]$train.result$best.mean.measure)){
+      train.cv <- sapply(Results[[ID]]$Assessment,function(x) x$train.result$best.mean.measure["kappa"])
+      res <- rbind(res,train.cv=train.cv)
+    }
+    if(!is.null(Results[[ID]]$FullModel)){
+      if("CV.result" %in% class(Results[[ID]]$FullModel[[1]]) &&
+         !is.null(Results[[ID]]$FullModel[[1]]$best.mean.measure)){
+        full.cv <- sapply(Results[[ID]]$FullModel,function(x) x$best.mean.measure["kappa"])
+        res <- rbind(res,full.cv=full.cv)
+      }
+    }
+  }
+  res <- add.mean(res)
+  colnames(res) <- c(as.character(1:(length(res)-1)),"mean")
+  print(format(res,digits=3))
+  "-"
+}
 run <- function(ID,train.on.full=FALSE,model.assessment=!train.on.full,predict.public=train.on.full){
   numberOfEssaySet <- length(Set)
   source(paste("model/",as.character(ID),".R",sep=""))
@@ -41,7 +73,7 @@ run <- function(ID,train.on.full=FALSE,model.assessment=!train.on.full,predict.p
     eval.parent(parse(text=x),2)
   assess <- function(k){
     set.seed(27459+k^3)
-     with(Set[[k]],{
+    with(Set[[k]],{
       n <- length(y)
       mask <- sample(n,floor(n*0.8))
 
@@ -72,16 +104,15 @@ run <- function(ID,train.on.full=FALSE,model.assessment=!train.on.full,predict.p
               ,quote=FALSE,row.names=FALSE)
   }
 
-  browser()
   if(model.assessment){
     Results[[ID]]$Assessment <<- mclapply(1:numberOfEssaySet,assess)
     logging(ID)
   }
-  browser()
   if(train.on.full)
     Results[[ID]]$FullModel <<- mclapply(1:numberOfEssaySet,train.full)
   if(predict.public){
     Results[[ID]]$PublicPrediction <<- mclapply(1:numberOfEssaySet,pred.public)
     write.public(ID)
   }
+  save.results()
 }
