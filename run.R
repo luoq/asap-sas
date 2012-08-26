@@ -2,16 +2,6 @@ require(Metrics)
 require(parallel)
 require(Matrix)
 require(tm)
-load.results <- function(){
-  data.file <- "model/model.RData"
-  if(!exists("Results")){
-    if(file.exists(data.file))
-      load(data.file)
-    else{
-      Results <<- NULL
-    }
-  }
-}
 save.results <- function()
   save(Results,file="model/model.RData")
 logging <- function(ID){
@@ -21,10 +11,12 @@ logging <- function(ID){
   info <- cbind(info,matrix(kappas,nrow=1))
   write.table(info ,file="model/log.txt",append=TRUE,sep=",",row.names=FALSE,col.names=FALSE)
 }
-run <- function(ID,model.assessment=TRUE,train.on.full=TRUE,predict.public=train.on.full){
+run <- function(ID,model.assessment=TRUE,train.on.full=FALSE,predict.public=train.on.full){
   numberOfEssaySet <- length(Set)
   source(paste("model/",as.character(ID),".R",sep=""))
   used.feature=used.feature[c("simple","dtm","corpus")]
+  if(ID>length(Results))
+    length(Results) <<- ID
   Results[[ID]]$description <<- description
   Results[[ID]]$used.feature <<- used.feature
   Results[[ID]]$dtm.feature.ctrl <<- dtm.feature.ctrl
@@ -81,13 +73,13 @@ run <- function(ID,model.assessment=TRUE,train.on.full=TRUE,predict.public=train
   }
 
   if(model.assessment){
-    Results[[ID]]$Assessment <- mclapply(1:numberOfEssaySet,assess)
+    Results[[ID]]$Assessment <<- mclapply(1:numberOfEssaySet,assess)
     logging(ID)
   }
   if(train.on.full)
-    Results[[ID]]$FullModel <- mclapply(1:numberOfEssaySet,train.full)
+    Results[[ID]]$FullModel <<- mclapply(1:numberOfEssaySet,train.full)
   if(predict.public){
-    Results[[ID]]$PublicPrediction <- mclapply(1:numberOfEssaySet,pred.public)
+    Results[[ID]]$PublicPrediction <<- mclapply(1:numberOfEssaySet,pred.public)
     write.public(ID)
   }
 }
