@@ -29,6 +29,22 @@ pred.table <- function(k){
   rownames(data) <- Set[[k]]$id[test.mask(k)]
   as.data.frame(data)
 }
+get.cv.result.1 <- function(ID,k,what="prob",remove.one=TRUE){
+  data <- aggregate.CV.result(Results[[ID]]$FullModel[[k]],what)
+  if(remove.one)
+    data <- data[,1:(ncol(data)-1)]
+  colnames(data) <- sapply(1:ncol(data),function(i) paste(as.character(ID),".",as.character(i),sep=""))
+  as.data.frame(data)
+}
+get.cv.result <- function(k,ids){
+  data <- lapply(ids,function(id) {
+    remove.one <- id!=19
+    get.cv.result.1(id,k,remove.one=remove.one)
+  })
+  data <- do.call(cbind,data)
+  data <- cbind(data,y=Set[[k]]$y)
+  data
+}
 get.ture.y.on.test.set <- function()
   lapply(1:length(Set),function(k) Set[[k]]$y[test.mask(k)])
 report <- function(ID=NULL){
@@ -167,12 +183,14 @@ run <- function(ID,train.on.full=TRUE,model.assessment=!train.on.full,debug=FALS
   }
   save.results()
 }
-load.test.example <- function(k){
-  X <<- Set[[k]]$dtm[1:500,]
+load.test.example <- function(k,n=500,test.ratio=0.2){
+  train.index <- 1:n
+  test.index <- n+(1:floor(n*test.ratio))
+  X <<- Set[[k]]$dtm[train.index,]
   mask <- colSums(X)>0
   X <<- X[,mask]
-  y <<- Set[[k]]$y[1:500]
-  X1 <<- Set[[k]]$dtm[600:800,]
+  y <<- Set[[k]]$y[train.index]
+  X1 <<- Set[[k]]$dtm[test.index,]
   X1 <<- X1[,mask]
-  y1 <<- Set[[k]]$y[600:800]
+  y1 <<- Set[[k]]$y[test.index]
 }
