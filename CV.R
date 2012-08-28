@@ -5,8 +5,8 @@
 CV <- function(X,y,K=10,split="random",
                measure.fun=c(ScoreQuadraticWeightedKappa,precision),mean.fun=c(MeanQuadraticWeightedKappa,mean),main.measure=1,
                measure.names=c("kappa","precision"),
-               train.f,parameter=NULL,
-               multi.model=FALSE,select.model=multi.model,intrinsic.multi.training=FALSE,return.multi.model=TRUE,retrain=TRUE,
+               train.f,parameter=NULL,retrain=TRUE,
+               multi.model=FALSE,select.model=multi.model,intrinsic.multi.training=FALSE,return.multi.model=multi.model,
                return.result=!multi.model,return.best.result=multi.model){
   n <- length(y)
   all.folds <- if(split=="random")
@@ -26,45 +26,21 @@ CV <- function(X,y,K=10,split="random",
     X2 <- X[omit,,drop=FALSE]
     y2 <- y[omit]
 
-    if(multi.model){
-      if(!intrinsic.multi.training){
-        if(is.null(parameter))
-          stop("a list of parameter must be supplied")
-        else
-          fs <- lapply(parameter,function(p) do.call(train.f,c(list(X1),list(y1),p)))
-        res <- lapply(fs,function(f) predict(f,X2))
+    f <-
+      if(!multi.model || intrinsic.multi.training)
+        do.call(train.f,c(list(X1),list(y1),parameter))
+      else
+        lapply(parameter,function(p) do.call(train.f,c(list(X1),list(y1),p)))
+    res <-
+      if(return.multi.model){
+        res <- lapply(f,function(f) predict(f,X2))
         class <- sapply(res,function(x) x$class)
         prob <- sapply(res,function(x) x$prob,simplify="array")
         prob <- aperm(prob,c(1,3,2))
+        list(class=class,prob=prob)
       }
-      else{
-        if(is.null(parameter))
-          f <- train.f(X1,y1)
-        else
-          f <- do.call(train.f,c(list(X1),list(y1),parameter))
-        if(!return.multi.model){
-          res <- predict(f,X2)
-          class <- res$class
-          prob <- res$prob
-        }
-        else{
-          res <- lapply(f,function(f) predict(f,X2))
-          class <- sapply(res,function(x) x$class)
-          prob <- sapply(res,function(x) x$prob,simplify="array")
-          prob <- aperm(prob,c(1,3,2))
-        }
-      }
-    }
-    else{
-      if(is.null(parameter))
-        f <- train.f(X1,y1)
       else
-        f <- do.call(train.f,c(list(X1),list(y1),parameter))
-      res <- predict(f,X2)
-      class <- res$class
-      prob <- res$prob
-    }
-    list(class=class,prob=prob)
+        predict(f,X2)
   })
   if(return.result)
     ret$result <- res
@@ -113,21 +89,16 @@ CV <- function(X,y,K=10,split="random",
       ret$best.result <- lapply(res,function(x) with(x,list(class=class[,i],prob=prob[,i,])))
   }
   if(retrain){
-    model <-
-      if(is.null(parameter))
-        train.f(X,y)
-      else if(!multi.model)
-        do.call(train.f,c(list(X),list(y),parameter))
-      else{
-        if(!intrinsic.multi.training)
-          do.call(train.f,c(list(X),list(y),parameter.i))
-        else{
-          parameter.new <- parameter
-          parameter.new[[1]] <- parameter.i #assume the first is what matters
-          do.call(train.f,c(list(X),list(y),parameter.new))
-        }
-      }
-    ret$model <- model
+    f <- if(!multi.model)
+      do.call(train.f,c(list(X),list(y),parameter))
+    else if(intrinsic.multi.training){
+      parameter.new <- parameter
+      parameter.new[[1]] <- parameter.i #assume the first is what matters
+      do.call(train.f,c(list(X),list(y),parameter.new))
+    }
+    else
+      do.call(train.f,c(list(X),list(y),parameter.i))
+    ret$model <- f
   }
 
   class(ret) <- c("CV.result",class(ret))
