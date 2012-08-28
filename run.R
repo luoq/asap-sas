@@ -56,26 +56,44 @@ report.1 <- function(ID){
   res <- data.frame()
   if(!is.null(Results[[ID]]$Assessment)){
     test <- sapply(Results[[ID]]$Assessment,function(x) x$kappa)
+    test.prec <- sapply(1:length(Results[[ID]]$Assessment),function(k)
+                        precision(Results[[ID]]$Assessmen[[k]]$test.result$class,Y.test[[k]]))
     res <- rbind(res,test=test)
-    if("CV.result" %in% class(Results[[ID]]$Assessment[[1]]$train.result) &&
-       !is.null(Results[[ID]]$Assessment[[1]]$train.result$best.mean.measure)){
-      train.cv <- sapply(Results[[ID]]$Assessment,function(x) x$train.result$best.mean.measure["kappa"])
-      res <- rbind(res,train.cv=train.cv)
-    }
-    if(!is.null(Results[[ID]]$FullModel)){
-      if("CV.result" %in% class(Results[[ID]]$FullModel[[1]]) &&
-         !is.null(Results[[ID]]$FullModel[[1]]$best.mean.measure)){
-        full.cv <- sapply(Results[[ID]]$FullModel,function(x) x$best.mean.measure["kappa"])
-        res <- rbind(res,full.cv=full.cv)
+    res <- rbind(res,test.prec=test.prec)
+    if("CV.result" %in% class(Results[[ID]]$Assessment[[1]]$train.result)){
+      found <- FALSE
+      for(name in c("best.mean.measure","mean.measure")){
+        if(!found && !is.null(Results[[ID]]$Assessment[[1]]$train.result[[name]])){
+          train.cv <- sapply(Results[[ID]]$Assessment,function(x) x$train.result[[name]]["kappa"])
+          train.cv.prec <- sapply(Results[[ID]]$Assessment,function(x) x$train.result[[name]]["precision"])
+          train.cv.prec <- c(train.cv.prec,NA)
+          res <- rbind(res,train.cv=train.cv)
+          res <- rbind(res,train.cv.prec=train.cv.prec)
+          found <- TRUE
+        }
       }
     }
+  }
+  if(!is.null(Results[[ID]]$FullModel)){
+    if("CV.result" %in% class(Results[[ID]]$FullModel[[1]]))
+      found <- FALSE
+      for(name in c("best.mean.measure","mean.measure")){
+        if(!found && !is.null(Results[[ID]]$FullModel[[1]][[name]])){
+          full.cv <- sapply(Results[[ID]]$FullModel,function(x) x[[name]]["kappa"])
+          full.cv.prec <- sapply(Results[[ID]]$FullModel,function(x) x[[name]]["precision"])
+          full.cv.prec <- c(full.cv.prec,NA)
+          res <- rbind(res,full.cv=full.cv)
+          res <- rbind(res,full.cv.prec=full.cv.prec)
+          found <- TRUE
+        }
+      }
   }
   res <- add.mean(res)
   colnames(res) <- c(as.character(1:(length(res)-1)),"mean")
   print(format(res,digits=3))
   "-"
 }
-run <- function(ID,train.on.full=FALSE,model.assessment=!train.on.full,debug=FALSE) {
+run <- function(ID,train.on.full=TRUE,model.assessment=!train.on.full,debug=FALSE) {
   if(debug)
     mclapply <- lapply
   numberOfEssaySet <- length(Set)
