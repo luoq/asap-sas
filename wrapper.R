@@ -30,3 +30,23 @@ predict.rpart.model <- function(model,X){
     list(class=class,prob=prob)
   }
 }
+train.LiblineaR.model <- function(X,y,type,cost){
+  model <- LiblineaR(as.matrix(X),as.factor(y),type=type,cost=cost)
+  model <- list(model=model)
+  class(model) <- c("LiblineaR.wrap","list")
+  model
+}
+predict.LiblineaR.wrap <- function(model,X){
+  if(model$model$Type %in% c(0,6,7)){
+    res <- predict(model$model,as.matrix(X),proba=TRUE)
+    pred <- as.numeric(res$predictions)
+    prob <- res$probabilities
+    list(class=pred,prob=prob)
+  }
+  else{
+    res <- predict(model$model,as.matrix(X),decisionValues=TRUE)
+    pred <- as.numeric(res$predictions)
+    prob <- res$decisionValues
+    list(class=pred,prob=prob)
+  }
+}
