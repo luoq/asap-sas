@@ -7,40 +7,49 @@ train.Glmnet <- function(X,y,s=NULL,...){
 }
 predict.Glmnet <- function(model,X){
   pred <- predict(model$glmnet,s=model$s,X)
+  if(ncol(pred)==1)
+    pred <- as.vector(pred)
   return(list(class=pred))
 }
-train.Glmnet.with.NB <- function(X,y,glmnet.ctrl=NULL,calibrator.ctrl=NULL)
+train.Glmnet.with.calibrator <- function(calibrator)
+  function(X,y,glmnet.ctrl=NULL,calibrator.ctrl=NULL)
   train.calibrator.model(X,y,
                          function(X,y) do.call(train.Glmnet,c(list(X,y),glmnet.ctrl)),
-                         function(X,y) do.call(train.NB.normal,c(list(X,y,multi.model=TRUE),calibrator.ctrl)))
-CV.Glmnet.with.NB <- function(X,y,weights=NULL,nlambda=100,glmnet.ctrl=list(alpha=0.8,standardize=FALSE),
-                              cv.ctrl=NULL,calibrator.ctrl=NULL){
-  base.parameter <-
-    if(is.null(weights))
-      list(X,y)
-    else
-      list(X,y,weights=weights)
-  fit <- do.call(glmnet,c(list(X,y,nlambda=nlambda),glmnet.ctrl))
-  fit <- do.call(glmnet,c(base.parameter,list(nlambda=nlambda),glmnet.ctrl))
-  lambda <- fit$lambda
-  res <- do.call(CV,c(base.parameter,
-                      list(train.f=function(X,y,weights=rep(1,length(y)),s)
-                           train.Glmnet.with.NB(X,y,
-                                                glmnet.ctrl=c(list(weights=weights,s=s,lambda=lambda),glmnet.ctrl),
-                                                calibrator.ctrl=calibrator.ctrl),
-                           parameter=list(s=lambda),
-                           multi.model=TRUE,intrinsic.multi.training=TRUE,select.model=TRUE,return.multi.model=FALSE,retrain=FALSE),
-                      cv.ctrl))
-  s <- res$best.parameter
-  base.model <- list(glmnet=fit,s=s)
-  class(base.model) <- list("Glmnet","list")
-  base.pred <- predict(fit,X,s=s)
-  calibrator <- do.call(train.NB.normal,c(list(base.pred,y),calibrator.ctrl))
-  model <- list(base=base.model,calibrator=calibrator,calibrate.on="class")
-  class(model) <- list("calibrator.model","list")
-  res$model <- model
-  res
-}
+                         function(X,y) do.call(calibrator,c(list(X,y,multi.model=TRUE),calibrator.ctrl)))
+train.Glmnet.with.NB <- train.Glmnet.with.calibrator(train.NB.normal)
+train.Glmnet.with.rpart <- train.Glmnet.with.calibrator(train.rpart.model)
+CV.Glmnet.with.calibrator <- function(calibrator)
+  function(X,y,weights=NULL,nlambda=100,glmnet.ctrl=list(alpha=0.8,standardize=FALSE),
+           cv.ctrl=NULL,calibrator.ctrl=NULL){
+    L <- train.Glmnet.with.calibrator(calibrator)
+    base.parameter <-
+      if(is.null(weights))
+        list(X,y)
+      else
+        list(X,y,weights=weights)
+    fit <- do.call(glmnet,c(list(X,y,nlambda=nlambda),glmnet.ctrl))
+    fit <- do.call(glmnet,c(base.parameter,list(nlambda=nlambda),glmnet.ctrl))
+    lambda <- fit$lambda
+    res <- do.call(CV,c(base.parameter,
+                        list(train.f=function(X,y,weights=rep(1,length(y)),s)
+                             L(X,y,
+                               glmnet.ctrl=c(list(weights=weights,s=s,lambda=lambda),glmnet.ctrl),
+                               calibrator.ctrl=calibrator.ctrl),
+                             parameter=list(s=lambda),
+                             multi.model=TRUE,intrinsic.multi.training=TRUE,select.model=TRUE,return.multi.model=FALSE,retrain=FALSE),
+                        cv.ctrl))
+    s <- res$best.parameter
+    base.model <- list(glmnet=fit,s=s)
+    class(base.model) <- list("Glmnet","list")
+    base.pred <- predict(fit,X,s=s)
+    calibrator <- do.call(calibrator,c(list(base.pred,y),calibrator.ctrl))
+    model <- list(base=base.model,calibrator=calibrator,calibrate.on="class")
+    class(model) <- list("calibrator.model","list")
+    res$model <- model
+    res
+  }
+CV.Glmnet.with.NB <- CV.Glmnet.with.calibrator(train.NB.normal)
+CV.Glmnet.with.rpart <- CV.Glmnet.with.calibrator(train.rpart.model)
 train.Glmnet.with.NB.CV <- function(X,y,train.base=TRUE,glmnet.ctrl=list(alpha=0.8,standardize=FALSE),cv.ctrl=list(K=5,split="random"),
                                     calibrator.ctrl=NULL){
   res <- do.call(CV,c(list(X,y,
