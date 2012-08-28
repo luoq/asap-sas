@@ -2,7 +2,8 @@
 ## res <- CV(X,y,train.f=train.NB.Multinomial, parameter=list(ks=square.split(length(y),10)), multi.model=TRUE,intrinsic.multi.training=TRUE)
 ## res <- CV(X,y,train.f=train.NB.Multinomial)
 ##
-CV <- function(X,y,K=10,split="random",
+CV <- function(X,y,weights=NULL,
+               K=10,split="random",
                measure.fun=c(ScoreQuadraticWeightedKappa,precision),mean.fun=c(MeanQuadraticWeightedKappa,mean),main.measure=1,
                measure.names=c("kappa","precision"),
                train.f,parameter=NULL,retrain=TRUE,
@@ -25,12 +26,17 @@ CV <- function(X,y,K=10,split="random",
     y1 <- y[-omit]
     X2 <- X[omit,,drop=FALSE]
     y2 <- y[omit]
+    base.parameter <-
+      if(is.null(weights))
+        list(X1,y1)
+      else
+        list(X1,y1,weights=weights[-omit])
 
     f <-
       if(!multi.model || intrinsic.multi.training)
-        do.call(train.f,c(list(X1),list(y1),parameter))
+        do.call(train.f,c(base.parameter,parameter))
       else
-        lapply(parameter,function(p) do.call(train.f,c(list(X1),list(y1),p)))
+        lapply(parameter,function(p) do.call(train.f,c(base.parameter,p)))
     res <-
       if(return.multi.model){
         res <- lapply(f,function(f) predict(f,X2))
@@ -89,15 +95,20 @@ CV <- function(X,y,K=10,split="random",
       ret$best.result <- lapply(res,function(x) with(x,list(class=class[,i],prob=prob[,i,])))
   }
   if(retrain){
+    base.parameter <-
+      if(is.null(weights))
+        list(X1,y1)
+      else
+        list(X,y,weights=weights)
     f <- if(!multi.model)
-      do.call(train.f,c(list(X),list(y),parameter))
+      do.call(train.f,c(base.parameter,parameter))
     else if(intrinsic.multi.training){
       parameter.new <- parameter
       parameter.new[[1]] <- parameter.i #assume the first is what matters
-      do.call(train.f,c(list(X),list(y),parameter.new))
+      do.call(train.f,c(base.parameter,parameter.new))
     }
     else
-      do.call(train.f,c(list(X),list(y),parameter.i))
+      do.call(train.f,c(base.parameter,parameter.i))
     ret$model <- f
   }
 

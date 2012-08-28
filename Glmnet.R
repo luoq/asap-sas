@@ -13,14 +13,21 @@ train.Glmnet.with.NB <- function(X,y,glmnet.ctrl=NULL,calibrator.ctrl=NULL)
   train.calibrator.model(X,y,
                          function(X,y) do.call(train.Glmnet,c(list(X,y),glmnet.ctrl)),
                          function(X,y) do.call(train.NB.normal,c(list(X,y,multi.model=TRUE),calibrator.ctrl)))
-CV.Glmnet.with.NB <- function(X,y,nlambda=100,glmnet.ctrl=list(alpha=0.8,standardize=FALSE),
+CV.Glmnet.with.NB <- function(X,y,weights=NULL,nlambda=100,glmnet.ctrl=list(alpha=0.8,standardize=FALSE),
                               cv.ctrl=NULL,calibrator.ctrl=NULL){
+  base.parameter <-
+    if(is.null(weights))
+      list(X,y)
+    else
+      list(X,y,weights=weights)
   fit <- do.call(glmnet,c(list(X,y,nlambda=nlambda),glmnet.ctrl))
+  fit <- do.call(glmnet,c(base.parameter,list(nlambda=nlambda),glmnet.ctrl))
   lambda <- fit$lambda
-  res <- do.call(CV,c(list(X,y,
-                           train.f=function(X,y,s) train.Glmnet.with.NB(X,y,
-                             glmnet.ctrl=c(list(s=s,lambda=lambda),glmnet.ctrl),
-                             calibrator.ctrl=calibrator.ctrl),
+  res <- do.call(CV,c(base.parameter,
+                      list(train.f=function(X,y,weights=rep(1,length(y)),s)
+                           train.Glmnet.with.NB(X,y,
+                                                glmnet.ctrl=c(list(weights=weights,s=s,lambda=lambda),glmnet.ctrl),
+                                                calibrator.ctrl=calibrator.ctrl),
                            parameter=list(s=lambda),
                            multi.model=TRUE,intrinsic.multi.training=TRUE,select.model=TRUE,return.multi.model=FALSE,retrain=FALSE),
                       cv.ctrl))
