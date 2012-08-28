@@ -21,6 +21,8 @@ predict.rpart.model <- function(model,X){
     list(class=class,prob=prob)
   }
   else{
+    if(is.vector(X))
+      X <- matrix(X,ncol=1)
     res <- lapply(1:length(model$rpart),function(i) predict(model$rpart[[i]],X[,i]))
     class <- sapply(res,function(x) x$class)
     prob <- sapply(res,function(x) x$prob,simplify="array")

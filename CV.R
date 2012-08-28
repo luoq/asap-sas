@@ -100,15 +100,16 @@ CV <- function(X,y,weights=NULL,
         list(X,y)
       else
         list(X,y,weights=weights)
-    f <- if(!multi.model)
-      do.call(train.f,c(base.parameter,parameter))
-    else if(intrinsic.multi.training){
-      parameter.new <- parameter
-      parameter.new[[1]] <- parameter.i #assume the first is what matters
-      do.call(train.f,c(base.parameter,parameter.new))
-    }
-    else
-      do.call(train.f,c(base.parameter,parameter.i))
+    f <-
+      if(is.null(parameter) || !multi.model) # sometimes we want retrain multi.model without model selection
+        do.call(train.f,c(base.parameter,parameter))
+      else if(intrinsic.multi.training){
+        parameter.new <- parameter
+        parameter.new[[1]] <- parameter.i #assume the first is what matters
+        do.call(train.f,c(base.parameter,parameter.new))
+      }
+      else
+        do.call(train.f,c(base.parameter,parameter.i))
     ret$model <- f
   }
 
