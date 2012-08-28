@@ -97,7 +97,7 @@ CV <- function(X,y,weights=NULL,
   if(retrain){
     base.parameter <-
       if(is.null(weights))
-        list(X1,y1)
+        list(X,y)
       else
         list(X,y,weights=weights)
     f <- if(!multi.model)
