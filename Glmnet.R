@@ -6,16 +6,38 @@ train.Glmnet <- function(X,y,s=NULL,...){
   model
 }
 predict.Glmnet <- function(model,X){
-  pred <- predict(model$glmnet,s=model$s,X)
-  if(ncol(pred)==1)
-    pred <- as.vector(pred)
-  return(list(class=pred))
+  try.convert.to.vector <- function(x)
+    if(is.matrix(x) && ncol(x)==1) as.vector(x) else x
+  convert.numeric <- function(x){
+    if(is.matrix(x) && ncol(x)!=1)
+      matrix(as.numeric(x),ncol=ncol(x))
+    else
+      as.numeric(x)
+  }
+  model.type <- class(model$glmnet)[[1]]
+  if(model.type == "multnet"){
+    pred <- convert.numeric(predict(model$glmnet,X,s=model$s,type="class"))
+    prob <- predict(model$glmnet,X,s=model$s,type="response")
+    prob <- aperm(prob,c(1,3,2))
+    return(list(class=pred,prob=prob))
+  }
+  else if(model.type == "elnet"){
+    pred <- try.convert.to.vector(predict(model$glmnet,s=model$s,X))
+    return(list(class=pred))
+  }
+  else
+    stop("not implemented")
 }
-train.Glmnet.with.calibrator <- function(calibrator)
-  function(X,y,glmnet.ctrl=NULL,calibrator.ctrl=NULL)
-  train.calibrator.model(X,y,
-                         function(X,y) do.call(train.Glmnet,c(list(X,y),glmnet.ctrl)),
-                         function(X,y) do.call(calibrator,c(list(X,y,multi.model=TRUE),calibrator.ctrl)))
+train.Glmnet.with.calibrator <- function(calibrator){
+  if(is.null(calibrator))
+    function(X,y,glmnet.ctrl=NULL,calibrator.ctrl=NULL)
+      do.call(train.Glmnet,c(list(X,y),glmnet.ctrl))
+  else
+    function(X,y,glmnet.ctrl=NULL,calibrator.ctrl=NULL)
+      train.calibrator.model(X,y,
+                             function(X,y) do.call(train.Glmnet,c(list(X,y),glmnet.ctrl)),
+                             function(X,y) do.call(calibrator,c(list(X,y,multi.model=TRUE),calibrator.ctrl)))
+}
 train.Glmnet.with.NB <- train.Glmnet.with.calibrator(train.NB.normal)
 train.Glmnet.with.rpart <- train.Glmnet.with.calibrator(train.rpart.model)
 CV.Glmnet.with.calibrator <- function(calibrator)
@@ -27,7 +49,6 @@ CV.Glmnet.with.calibrator <- function(calibrator)
         list(X,y)
       else
         list(X,y,weights=weights)
-    fit <- do.call(glmnet,c(list(X,y,nlambda=nlambda),glmnet.ctrl))
     fit <- do.call(glmnet,c(base.parameter,list(nlambda=nlambda),glmnet.ctrl))
     lambda <- fit$lambda
     res <- do.call(CV,c(base.parameter,
@@ -41,15 +62,20 @@ CV.Glmnet.with.calibrator <- function(calibrator)
     s <- res$best.parameter
     base.model <- list(glmnet=fit,s=s)
     class(base.model) <- list("Glmnet","list")
-    base.pred <- predict(fit,X,s=s)
-    calibrator <- do.call(calibrator,c(list(base.pred,y),calibrator.ctrl))
-    model <- list(base=base.model,calibrator=calibrator,calibrate.on="class")
-    class(model) <- list("calibrator.model","list")
+    if(is.null(calibrator))
+      model <- base.model
+    else{
+      base.pred <- predict(fit,X,s=s)
+      calibrator <- do.call(calibrator,c(list(base.pred,y),calibrator.ctrl))
+      model <- list(base=base.model,calibrator=calibrator,calibrate.on="class")
+      class(model) <- list("calibrator.model","list")
+    }
     res$model <- model
     res
   }
 CV.Glmnet.with.NB <- CV.Glmnet.with.calibrator(train.NB.normal)
 CV.Glmnet.with.rpart <- CV.Glmnet.with.calibrator(train.rpart.model)
+CV.Glmnet <- CV.Glmnet.with.calibrator(NULL)
 train.Glmnet.with.calibrator.CV <- function(train.calibrator)
   function(X,y,train.base=TRUE,glmnet.ctrl=list(alpha=0.8,standardize=FALSE),cv.ctrl=list(K=5,split="random"),
            calibrator.ctrl=NULL){
