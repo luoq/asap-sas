@@ -10,12 +10,6 @@ Stacking.Results[[6]] <-
     weight <- -(log(prec)+log(1-prec))
     vote(class2,weight=weight)
   }))
-Stacking.Results[[6]] <-
-  assess.combining.method.all(function(x) with(x,{
-    prec <- apply(class1,2,function(x) precision(x,y1))
-    weight <- -(log(prec)+log(1-prec))
-    vote(class2,weight=weight)
-  }))
 f7 <- function(x) with(x,{
     X1 <- cBind(1*(Set[[essay_set]]$dtm[mask,]!=0),class1[,2:ncol(class1)])
     X2 <- cBind(1*(Set[[essay_set]]$dtm[-mask,]!=0),class2[,2:ncol(class2)])
@@ -24,3 +18,6 @@ f7 <- function(x) with(x,{
   })
 Stacking.Results[[7]] <-
   assess.combining.method.all(f7)
+Stacking.Results[[8]] <- assess.meta.classifer.all(train.logitboost.model)
+Stacking.Results[[9]] <- assess.meta.classifer.all(function(X,y) CV.Glmnet.with.NB(X,y,glmnet.ctrl=list(alpha=0.8,standardize=TRUE))$model)
+Stacking.Results[[10]] <- assess.meta.classifer.all(function(X,y) CV.Glmnet(X,y,glmnet.ctrl=list(alpha=0.8,standardize=FALSE,family="multinomial"))$model)

@@ -65,3 +65,22 @@ predict.rf.model <- function(model,X){
   colnames(X) <- NULL
   list(class=factor2numeric(predict(model$model,X)))
 }
+require(caTools)
+train.logitboost.model <- function(X,y){
+  model <- LogitBoost(X,y)
+  model <- list(model=model)
+  class(model) <- c("logitboost.model","list")
+  model
+}
+predict.logitboost.model <- function(model,X){
+  prob <- predict(model$model,X,type="raw")
+  class <- apply(prob,1,function(x){
+    maxs <- which(x==max(x))
+    if(length(maxs)==1)
+      maxs
+    else
+      sample(maxs,1)
+  })
+  class <- model$model$lablist[class]
+  list(class=class,prob=prob)
+}
