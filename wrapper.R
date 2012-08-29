@@ -30,6 +30,7 @@ predict.rpart.model <- function(model,X){
     list(class=class,prob=prob)
   }
 }
+require(LiblineaR)
 train.LiblineaR.model <- function(X,y,type,cost){
   model <- LiblineaR(as.matrix(X),as.factor(y),type=type,cost=cost)
   model <- list(model=model)
