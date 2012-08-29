@@ -70,7 +70,7 @@ D <- function(X,y){
     list(
          list(learner=prebinarizer(
                 function(X,y)
-                CV.Glmnet.with.NB.2(X,y,cv.ctrl=list(K=K,main.measure=main.measure)))),
+                CV.Glmnet.with.NB(X,y,cv.ctrl=list(K=K,main.measure=main.measure)))),
          list(learner=function(X,y)
               CV.NB.Multinomial.Best.K(X,y,weight.fun="informationGain2",
                                        ks=4+square.split(ncol(X)-4,100),

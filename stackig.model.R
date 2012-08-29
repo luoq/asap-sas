@@ -10,3 +10,17 @@ Stacking.Results[[6]] <-
     weight <- -(log(prec)+log(1-prec))
     vote(class2,weight=weight)
   }))
+Stacking.Results[[6]] <-
+  assess.combining.method.all(function(x) with(x,{
+    prec <- apply(class1,2,function(x) precision(x,y1))
+    weight <- -(log(prec)+log(1-prec))
+    vote(class2,weight=weight)
+  }))
+f7 <- function(x) with(x,{
+    X1 <- cBind(1*(Set[[essay_set]]$dtm[mask,]!=0),class1[,2:ncol(class1)])
+    X2 <- cBind(1*(Set[[essay_set]]$dtm[-mask,]!=0),class2[,2:ncol(class2)])
+    model <- CV.Glmnet.with.NB(X1,y1)$model
+    predict(model,X2)$class
+  })
+Stacking.Results[[7]] <-
+  assess.combining.method.all(f7)
