@@ -94,6 +94,7 @@ get.all.stacking.data <- function(){
   })
 }
 report.stacking.1 <- function(k){
+  cat(paste("result for method",as.character(k),"\n"))
   kappa <- sapply(Stacking.Results[[k]],function(x) x$mean.kappa)
   prec <- sapply(Stacking.Results[[k]],function(x) x$mean.prec)
   data <- rbind(c(kappa,MeanQuadraticWeightedKappa(kappa)),
