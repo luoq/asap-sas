@@ -67,11 +67,10 @@ assess.meta.classifer <- function(train.f,result){
   kappas <- sapply(result,function(x){
     with(x,{
       f <- train.f(prob1,y1)
-      if(
       pred2 <- predict(f,prob2)$class
       ScoreQuadraticWeightedKappa(pred2,y2)
     })
   })
   mean.kappa <- MeanQuadraticWeightedKappa(kappas)
-  return(list(kappa=kappas,mean.kappa=kappa)))
+  return(list(kappa=kappas,mean.kappa=kappa))
 }
