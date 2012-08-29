@@ -18,7 +18,7 @@ Set <- mclapply(1:numberOfEssaySet,function(k){
     dtm <- as.Matrix(get_dtm(corpus,ngram=3,minDoc=floor(0.005*length(y)),maxDoc=floor(0.80*length(y))))
     terms <- colnames(dtm)
     ngram <- sapply(terms,wordNumber)
-    dtm.public <- as.Matrix(get_dtm(corpus.public,dictionary=terms,ngram=5))
+    dtm.public <- as.Matrix(get_dtm(corpus.public,dictionary=terms,ngram=3))
   })
 })
 save(Set,file="data.RData")
