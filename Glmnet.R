@@ -19,6 +19,9 @@ predict.Glmnet <- function(model,X){
     pred <- convert.numeric(predict(model$glmnet,X,s=model$s,type="class"))
     prob <- predict(model$glmnet,X,s=model$s,type="response")
     prob <- aperm(prob,c(1,3,2))
+    d <- dim(prob)
+    if(d[2]==1)
+      dim(prob) <- c(d[1],d[3])
     return(list(class=pred,prob=prob))
   }
   else if(model.type == "elnet"){
