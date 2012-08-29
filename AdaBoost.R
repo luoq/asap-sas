@@ -22,7 +22,7 @@ AdaBoost <- function(X,y,learner,T){
   class(model) <- c("AdaBoost.model","list")
   model
 }
-AdaBoost.V1 <- function(X,y,learner,T,self.cv=TRUE,cv.ctrl=NULL){
+AdaBoost.V1 <- function(X,y,learner,T,self.cv=TRUE,cv.ctrl=NULL,square.weight=TRUE){
   n <- length(y)
   D <- rep(1,n)/n
   hs <- NULL
@@ -41,7 +41,11 @@ AdaBoost.V1 <- function(X,y,learner,T,self.cv=TRUE,cv.ctrl=NULL){
     if(epsilon > 1/2)
       break
     beta <- epsilon/(1-epsilon)
-    D[mask] <- D[mask]*beta
+    if(square.weight){
+      D[!mask] <- D[!mask]/beta*(pred[!mask]-y[!mask])^2
+    }
+    else
+      D[mask] <- D[mask]*beta
     D <- D/sum(D)
     Ds <- cbind(Ds,D)
     hs <- c(hs,list(h))
