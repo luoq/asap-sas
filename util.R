@@ -219,3 +219,9 @@ majority <- function(X,levels=NULL){
   })
 }
 binarizer <- function(X) 1*(X!=0)
+vote <- function(X,levels=NULL,weight=1:ncol(X)){
+  if(is.null(levels))
+    levels <- as.numeric(levels(as.factor(X)))
+  score <- sapply(levels,function(a) (X==a) %*% weight)
+  levels[apply(score,1,which.max)]
+}

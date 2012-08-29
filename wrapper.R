@@ -53,10 +53,15 @@ predict.LiblineaR.wrap <- function(model,X){
 }
 require(randomForest)
 train.rf.model <- function(X,y){
-  model <- randomForest(as.matrix(X),as.factor(y))
+  X <- as.matrix(X)
+  colnames(X) <- NULL
+  model <- randomForest(X,as.factor(y))
   model <- list(model=model)
   class(model) <- c("rf.model","list")
   model
 }
-predict.rf.model <- function(model,X)
+predict.rf.model <- function(model,X){
+  X <- as.matrix(X)
+  colnames(X) <- NULL
   list(class=factor2numeric(predict(model$model,X)))
+}

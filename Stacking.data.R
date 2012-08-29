@@ -63,31 +63,6 @@ get.CV.Stacking.data <- function(X,y,f,K=5,split="random"){
     list(model=model,prob1=prob1,class1=class1,prob2=prob2,class2=class2,y1=y1,y2=y2)
   })
 }
-assess.combining.method <- function(f,result){
-  res <- lapply(result,function(x){
-    pred2 <- f(x)
-    with(x,{
-      kappa <- ScoreQuadraticWeightedKappa(pred2,y2)
-      prec <- precision(pred2,y2)
-      list(kappa=kappa,prec=prec)
-    })
-  })
-  kappas <- sapply(res,function(x) x$kappa)
-  precs <- sapply(res,function(x) x$prec)
-  mean.kappa <- MeanQuadraticWeightedKappa(kappas)
-  mean.prec <- mean(precs)
-  return(list(kappa=kappas,mean.kappa=mean.kappa,prec=precs,mean.prec=mean.prec))
-}
-  
-assess.meta.classifer <- function(train.f,result)
-  assess.combining.method(
-                          function(x){
-                            with(x,{
-                              f <- train.f(prob1,y1)
-                              predict(f,prob2)$class
-                            })
-                          },result)
-
 D <- function(X,y){
   K <- 10
   main.measure <- 2
@@ -118,8 +93,6 @@ get.all.stacking.data <- function(){
     CV.D(x$dtm,x$y)
   })
 }
-assess.meta.classifer.all <- function(train.f)
-  mclapply(Stacking.data,function(x) assess.meta.classifer(train.f,x))
 report.stacking.1 <- function(k){
   kappa <- sapply(Stacking.Results[[k]],function(x) x$mean.kappa)
   prec <- sapply(Stacking.Results[[k]],function(x) x$mean.prec)
@@ -129,3 +102,42 @@ report.stacking.1 <- function(k){
   data <- as.data.frame(data)
   print(round(data,3))
 }
+report.stacking <- function(ID=NULL){
+  cat("\n")
+  if(is.null(ID))
+    ID <- length(Stacking.Results)
+  if(length(ID)==1 && ID==0)
+    ID <- 1:length(Stacking.Results)
+  sapply(ID,function(i) {
+    report.stacking.1(i)
+    cat("\n")
+    1
+  })
+}
+assess.combining.method <- function(f,result){
+  res <- lapply(result,function(x){
+    pred2 <- f(x)
+    with(x,{
+      kappa <- ScoreQuadraticWeightedKappa(pred2,y2)
+      prec <- precision(pred2,y2)
+      list(kappa=kappa,prec=prec)
+    })
+  })
+  kappas <- sapply(res,function(x) x$kappa)
+  precs <- sapply(res,function(x) x$prec)
+  mean.kappa <- MeanQuadraticWeightedKappa(kappas)
+  mean.prec <- mean(precs)
+  return(list(kappa=kappas,mean.kappa=mean.kappa,prec=precs,mean.prec=mean.prec))
+}
+assess.meta.classifer <- function(train.f,result)
+  assess.combining.method(
+                          function(x){
+                            with(x,{
+                              f <- train.f(prob1,y1)
+                              predict(f,prob2)$class
+                            })
+                          },result)
+assess.meta.classifer.all <- function(train.f)
+  mclapply(Stacking.data,function(x) assess.meta.classifer(train.f,x))
+assess.combining.method.all <- function(f)
+  mclapply(Stacking.data,function(x) assess.combining.method(f,x))
