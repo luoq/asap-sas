@@ -183,7 +183,7 @@ run <- function(ID,train.on.full=TRUE,model.assessment=!train.on.full,debug=FALS
   }
   save.results()
 }
-load.test.example <- function(k,n=500,test.ratio=0.2){
+load.test.example <- function(k,n=500,test.ratio=0.2,binary=TRUE){
   train.index <- 1:n
   test.index <- n+(1:floor(n*test.ratio))
   X <<- Set[[k]]$dtm[train.index,]
@@ -193,4 +193,8 @@ load.test.example <- function(k,n=500,test.ratio=0.2){
   X1 <<- Set[[k]]$dtm[test.index,]
   X1 <<- X1[,mask]
   y1 <<- Set[[k]]$y[test.index]
+  if(binary){
+    X <<- 1*(X!=0)
+    X1 <<- 1*(X1!=0)
+  }
 }
