@@ -70,3 +70,10 @@ f15 <- function(x) with(x,{
   predict(model,X2)$class
 })
 Stacking.Results[[15]] <- assess.combining.method.all(f15)
+f16 <- function(x) with(x,{
+  X1 <- class1
+  X2 <- class2
+  model <- train.NB.normal(X1,y1)
+  predict(model,X2)$class
+})
+Stacking.Results[[16]] <- assess.combining.method.all(f16)

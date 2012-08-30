@@ -17,7 +17,7 @@ Bagging <- function(X,y,train.classifier,B=25,n=length(y)){
   prec <- precision(pred.oob,y)
   model <- list(levels=levels,classifiers=classifiers)
   class(model) <- c("Bagging",class(model))
-  list(model=model,kappa=kappa,prec=prec)
+  list(model=model,kappa=kappa,prec=prec,preds=preds)
 }
 predict.Bagging <- function(model,X){
   preds <- sapply(model$classifiers,function(f) predict(f,X)$class)
