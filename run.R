@@ -10,7 +10,7 @@ source('Glmnet.R')
 source('util.R')
 source('feature.R')
 train.txt.file <- "../data/train_rel_2.tsv"
-test.txt.file <- "../data/public_leaderboard_rel_2.tsv"
+test.txt.file <- "../data/private_leaderboard.tsv"
 
 model.store.file <- "data/model.RData"
 train.feature.store.file <- "data/train.feature.RData"
