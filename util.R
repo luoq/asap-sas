@@ -67,7 +67,7 @@ as.Matrix <- function(X)
   UseMethod("as.Matrix")
 as.Matrix.DocumentTermMatrix <- function(X){
   require(Matrix)
-  Y <- spMatrix(nrow=X$nrow,ncol=X$ncol,i=X$i,j=X$j,x=X$v)
+  Y <- sparseMatrix(nrow=X$nrow,ncol=X$ncol,i=X$i,j=X$j,x=X$v)
   dimnames(Y) <- list(X$dimnames$Docs,X$dimnames$Terms)
   return(Y)
 }
@@ -224,4 +224,41 @@ vote <- function(X,levels=NULL,weight=1:ncol(X)){
     levels <- as.numeric(levels(as.factor(X)))
   score <- sapply(levels,function(a) (X==a) %*% weight)
   levels[apply(score,1,which.max)]
+}
+first.occurrence <- function(x,d){
+  n <- length(x)
+  f <- rep(NA,d+1)
+  f[d+1] <- n+1
+  for(i in seq(n,1,-1))
+    f[x[i]] <- i
+  end <- n+1
+  for(i in seq(d,1,-1)){
+    if(is.na(f[i]))
+      f[i] <- end
+    else
+      end <- f[i]
+  }
+  f
+}
+write.libfm <- function(x,y=NULL,file){
+  on.exit(sink())
+  x <- as(x,"RsparseMatrix")
+
+  if (!is.null(y) & (length(y) != nrow(x)))
+    stop(paste("Length of y (=", length(y),
+               ") does not match number of rows of x (=",
+               nrow(x), ")!", sep=""))
+  sink(file)
+  is.last.col.all.zero <- !any(x@j==ncol(x)-1)
+  nnz <- length(x@x)
+  for (i in 1:nrow(x)) {
+    if (!is.null(y)) cat (y[i])
+    if ((x@p[i] < nnz) && (x@p[i] < x@p[i + 1])) {
+      for (j in x@p[i] : (x@p[i + 1] - 1))
+        cat(" ",x@j[j+1], ":", x@x[j+1], sep="")
+      if (i==1 && is.last.col.all.zero)
+        cat(" ",ncol(x), ":", 0, sep="")
+    }
+    cat("\n")
+  }
 }
